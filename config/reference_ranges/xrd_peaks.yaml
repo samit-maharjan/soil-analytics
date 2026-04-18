@@ -1,25 +1,129 @@
-# Diagnostic 2theta regions (Cu Kα ~1.5406 Å) — indicative only; mineral ID needs full protocol.
+# Diagnostic 2θ regions (Cu Kα ~1.5406 Å) — lime mortar / carbonated binders, brick powder (surkhi), and soil minerals.
+# Peaks are indicative; use full pattern, chemistry, and sample prep for identification.
 version: "0.1"
 assumptions:
   radiation: "Cu Kα"
   wavelength_angstrom: 1.5406
-  note: "d-spacings vary slightly with solid solution; use oriented clay mounts for clay ID."
+  note: >-
+    Angles follow laboratory reference tables below plus common powder databases (e.g. ICDD PDF
+    patterns for calcite, portlandite). Mullite and quartz both contribute near ~26–27° 2θ;
+    resolve with profile fit or chemistry. d-spacings shift with solid solution and strain.
 minerals:
+  - id: portlandite_18
+    label: "Portlandite Ca(OH)₂ (~18° 2θ)"
+    two_theta_min: 17.3
+    two_theta_max: 18.7
+    source: "Laboratory phase table; powder patterns list strong portlandite reflections near ~18° and ~34° (Cu Kα)"
+    notes: "Residual lime; partial carbonation if present with calcite."
+
+  - id: portlandite_34
+    label: "Portlandite Ca(OH)₂ (~34° 2θ)"
+    two_theta_min: 33.0
+    two_theta_max: 35.0
+    source: "Laboratory phase table; matches typical portlandite maxima in cement/lime XRD atlases"
+    notes: "Often strongest portlandite line; overlaps other phases only if broadened."
+
+  - id: mullite_16_17
+    label: "Mullite (16–17° 2θ region)"
+    two_theta_min: 15.5
+    two_theta_max: 17.5
+    source: "Laboratory phase table; mullite shows multiple low-angle reflections in fired-clay / brick materials"
+    notes: "Consistent with brick powder (surkhi) or aluminosilicate additives; not unique alone."
+
   - id: quartz_101
-    label: "Quartz (101) region"
+    label: "Quartz (principal ~101 / α-quartz region)"
     two_theta_min: 26.0
     two_theta_max: 27.0
-    source: "Powder diffraction handbooks / soil XRD tutorials"
-    notes: "Strongest quartz peak often near ~26.6° 2θ (Cu Kα)."
+    source: "Powder diffraction handbooks; α-quartz strongest line commonly ~26.6° 2θ (Cu Kα)"
+    notes: "Sand aggregate; overlaps mullite features near 26–27° — use full pattern."
+
+  - id: mullite_26_27
+    label: "Mullite (26–27° 2θ region)"
+    two_theta_min: 25.5
+    two_theta_max: 27.5
+    source: "Laboratory phase table; Rietveld / ceramic literature on mullite multiplets in this range"
+    notes: "Brick powder marker; interferes with quartz — deconvolve or use other mullite bands."
+
+  - id: mullite_40_41
+    label: "Mullite (40–41° 2θ region)"
+    two_theta_min: 39.5
+    two_theta_max: 41.5
+    source: "Laboratory phase table; higher-angle mullite group"
+    notes: "Supports surkhi / fired-clay interpretation together with other mullite windows."
+
+  - id: calcite_23
+    label: "Calcite CaCO₃ (~23° 2θ)"
+    two_theta_min: 22.0
+    two_theta_max: 24.0
+    source: "Laboratory phase table; ICDD calcite pattern includes reflections in the low-20s (Cu Kα)"
+    notes: "Carbonation product; distinguish from aragonite/vaterite by full pattern."
+
   - id: calcite_104
-    label: "Calcite (104) region"
-    two_theta_min: 29.0
-    two_theta_max: 30.0
-    source: "Common soil carbonate peak ~29.4° 2θ (Cu Kα)"
-    notes: "Dolomite and other carbonates have different peaks."
+    label: "Calcite CaCO₃ (~29.4° 2θ, strongest)"
+    two_theta_min: 28.8
+    two_theta_max: 30.2
+    source: "Laboratory phase table (~29.4°); ICDD 01-076-0696 calcite (104) ~29.4° Cu Kα"
+    notes: "Usually most intense calcite peak; dolomite differs (e.g. 31° region)."
+
+  - id: calcite_31
+    label: "Calcite CaCO₃ (~31° 2θ)"
+    two_theta_min: 30.3
+    two_theta_max: 32.0
+    source: "Laboratory phase table; calcite secondary maxima in low-30s (Cu Kα)"
+    notes: "Confirms calcite with (104); watch overlap with dolomite if present."
+
+  - id: calcite_39_40
+    label: "Calcite CaCO₃ (39–40° 2θ)"
+    two_theta_min: 38.5
+    two_theta_max: 40.5
+    source: "Laboratory phase table; calcite mid-range reflections (powder databases)"
+    notes: "Carbonation extent — use with low-angle calcite peaks."
+
+  - id: calcite_43
+    label: "Calcite CaCO₃ (~43° 2θ)"
+    two_theta_min: 42.0
+    two_theta_max: 44.0
+    source: "Laboratory phase table; ICDD-style calcite pattern"
+    notes: "Higher-order calcite group."
+
+  - id: calcite_47_48
+    label: "Calcite CaCO₃ (47–48° 2θ)"
+    two_theta_min: 46.5
+    two_theta_max: 49.0
+    source: "Laboratory phase table; calcite reflections ~47–48° (Cu Kα)"
+    notes: "Useful at higher 2θ when baseline is flat."
+
+  - id: calcite_57
+    label: "Calcite CaCO₃ (~57° 2θ)"
+    two_theta_min: 56.0
+    two_theta_max: 58.0
+    source: "Laboratory phase table; high-angle calcite line"
+    notes: "Broader at small crystallite size."
+
+  - id: calcite_60
+    label: "Calcite CaCO₃ (~60° 2θ)"
+    two_theta_min: 59.0
+    two_theta_max: 61.0
+    source: "Laboratory phase table; high-angle calcite line"
+    notes: "Check for overlap with sample holder / fluorescence at very high angles."
+
+  - id: calcite_64_65
+    label: "Calcite CaCO₃ (64–65° 2θ)"
+    two_theta_min: 63.5
+    two_theta_max: 66.0
+    source: "Laboratory phase table; high-angle calcite group"
+    notes: "Weak unless long counts."
+
+  - id: calcite_72_75
+    label: "Calcite CaCO₃ (72–75° 2θ)"
+    two_theta_min: 71.0
+    two_theta_max: 76.0
+    source: "Laboratory phase table; upper-range calcite reflections (Cu Kα)"
+    notes: "Often noisy; qualitative support only."
+
   - id: kaolinite_001
     label: "Kaolinite basal ~7 Å (001)"
     two_theta_min: 12.0
     two_theta_max: 13.5
     source: "Clay XRD references (basal spacing ~7 Å)"
-    notes: "Chlorite can interfere; confirm with clay fraction."
+    notes: "Chlorite can interfere; confirm with clay fraction and glycol tests."
