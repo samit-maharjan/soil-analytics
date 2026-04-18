@@ -1,22 +1,108 @@
-# Mid-IR band windows for qualitative soil / SOM screening (curate sources in production).
-# Wavenumbers in cm^-1, absorbance axis increasing wavenumber typical for many exports.
+# Mid-IR band windows for qualitative screening (soil organic matter, lime mortar / carbonated binders, silicates).
+# Wavenumbers in cm^-1. Windows envelope laboratory peak tables and common literature positions.
 version: "0.1"
 bands:
+  - id: oh_stretch_high
+    label: "O–H stretching (moisture / adsorbed water)"
+    wavenumber_min: 3680
+    wavenumber_max: 3870
+    source: "Laboratory FTIR peak tables (lime mortar); typical free-water O–H region (e.g. ~3450–3750 broad; narrow peaks ~3740–3860 in some binders)"
+    notes: "Indicates moisture presence; may overlap bound-water features at lower wavenumber."
+
+  - id: oh_stretch_bound
+    label: "O–H stretching (bound / clustered water)"
+    wavenumber_min: 3340
+    wavenumber_max: 3430
+    source: "Laboratory FTIR tables; bound-water features often ~3350–3420 cm⁻¹ in hydrated systems"
+    notes: "Physically bound moisture; distinct from broad liquid-water band."
+
   - id: aliphatic_ch
-    label: "Aliphatic C-H stretch"
+    label: "Aliphatic C–H stretch"
     wavenumber_min: 2850
     wavenumber_max: 2960
-    source: "Margenot et al., IR Spectroscopy Soil Analysis Applications (review); typical alkyl C-H region"
-    notes: "Broad; overlaps with moisture; use as indicative only."
+    source: "Margenot et al., IR spectroscopy soil applications; typical alkyl C–H region"
+    notes: "Broad; overlaps moisture; minor organics ~2920 cm⁻¹ in some mortar samples."
+
+  - id: carbonate_combination
+    label: "Calcite carbonate combination band"
+    wavenumber_min: 2470
+    wavenumber_max: 2550
+    source: "Laboratory FTIR tables (~2513 cm⁻¹); carbonate combination/overtone region in MIR"
+    notes: "Associated with carbonation; use with other carbonate bands."
+
+  - id: adsorbed_co2
+    label: "Adsorbed CO₂ (surface)"
+    wavenumber_min: 2260
+    wavenumber_max: 2340
+    source: "Laboratory FTIR tables (~2297 cm⁻¹)"
+    notes: "Indicates adsorbed CO₂ during / after carbonation; not gas-phase CO₂."
+
+  - id: carbonate_overtone_2110
+    label: "Calcite carbonate overtone (high wavenumber)"
+    wavenumber_min: 2085
+    wavenumber_max: 2135
+    source: "Laboratory FTIR tables (~2114 cm⁻¹); carbonate overtone / combination features"
+    notes: "Confirms carbonate-related absorptions; pair with ν₃ and bending modes."
+
+  - id: carbonate_overtone_1790
+    label: "Calcite carbonate overtone (mid MIR)"
+    wavenumber_min: 1755
+    wavenumber_max: 1825
+    source: "Laboratory FTIR tables (~1790 cm⁻¹); carbonate overtone region"
+    notes: "Carbonate formation / crystallinity context; sample-dependent shift."
+
+  - id: molecular_water
+    label: "Molecular water (H–O–H bending)"
+    wavenumber_min: 1620
+    wavenumber_max: 1680
+    source: "Laboratory FTIR tables (~1651 cm⁻¹); liquid-water bending ~1640 cm⁻¹"
+    notes: "Porosity / hydration; overlaps weak organics in some spectra."
+
   - id: carbonyl
     label: "Carbonyl / carboxylate"
     wavenumber_min: 1700
     wavenumber_max: 1730
     source: "Common FTIR SOM literature — carboxylic C=O"
     notes: "Shift with H-bonding; not unique to one compound class."
+
+  - id: carbonate_nu3
+    label: "Calcite CO₃²⁻ asymmetric stretch (ν₃)"
+    wavenumber_min: 1375
+    wavenumber_max: 1430
+    source: "Laboratory FTIR tables (~1380–1420 cm⁻¹); mineralogical references cite calcite ν₃ ~1420 cm⁻¹ (broad)"
+    notes: "Lime carbonation to calcite; aragonite often slightly lower / different splitting."
+
   - id: silicate_si_o
-    label: "Silicate / polysaccharide complex region"
-    wavenumber_min: 900
-    wavenumber_max: 1200
-    source: "Soil mineralogy and organic matter FTIR reviews"
-    notes: "Strong overlap between Si-O and C-O stretching; qualitative."
+    label: "Silicate Si–O stretching"
+    wavenumber_min: 950
+    wavenumber_max: 1080
+    source: "Laboratory FTIR tables (~990–1025 cm⁻¹); silicate network ~1000–1100 cm⁻¹ (general MIR)"
+    notes: "Strength / durability context for pozzolanic or silicate-rich matrices; overlaps Si–O–Si and glassy bands."
+
+  - id: calcite_nu2
+    label: "Calcite CO₃²⁻ in-plane bend (ν₂)"
+    wavenumber_min: 860
+    wavenumber_max: 880
+    source: "Heritage science / mineral FTIR references — calcite ν₂ ~873 cm⁻¹; laboratory tables ~872–875 cm⁻¹"
+    notes: "Distinguish from aragonite (~858 cm⁻¹) when resolution allows."
+
+  - id: quartz_sio_bend
+    label: "Quartz Si–O–Si bending"
+    wavenumber_min: 765
+    wavenumber_max: 785
+    source: "Laboratory FTIR tables (~773–777 cm⁻¹); α-quartz feature in this region"
+    notes: "Dimensional stability / aggregate; may overlap weak feldspar features."
+
+  - id: calcite_nu4
+    label: "Calcite CO₃²⁻ out-of-plane bend (ν₄)"
+    wavenumber_min: 698
+    wavenumber_max: 722
+    source: "Literature — calcite ν₄ ~713 cm⁻¹; laboratory tables ~708–712 cm⁻¹"
+    notes: "Aragonite ν₄ near ~700 cm⁻¹; useful polymorph check with ν₂."
+
+  - id: lime_silicate_lattice
+    label: "Lime–silicate / low-wavenumber lattice modes"
+    wavenumber_min: 420
+    wavenumber_max: 525
+    source: "Laboratory FTIR tables (~430–517 cm⁻¹); Ca–O / framework modes in binder systems"
+    notes: "Microstructural stability; instrument / cutoff may limit far end."
