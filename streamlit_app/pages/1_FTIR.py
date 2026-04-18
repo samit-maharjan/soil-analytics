@@ -1,4 +1,4 @@
-"""FTIR upload and reference checks."""
+"""FTIR upload and band inference table."""
 
 from __future__ import annotations
 
@@ -55,19 +55,6 @@ cfg = reference_config_dir() / "ftir_bands.yaml"
 all_results = [check_ftir(s, config_path=cfg) for _, s in parsed]
 merged_inference = ftir_merged_inference_rows(all_results)
 
-merged_qc: list[dict[str, str]] = []
-for name, results in zip([n for n, _ in parsed], all_results, strict=True):
-    for r in results:
-        qc_row: dict[str, str] = {
-            "id": r.check_id,
-            "label": r.label,
-            "status": r.status,
-            "message": r.message,
-        }
-        if multi:
-            qc_row = {"Sample": name, **qc_row}
-        merged_qc.append(qc_row)
-
 inf_df = pd.DataFrame(merged_inference)
 st.subheader("Band inferences (reference ranges)")
 st.markdown(
@@ -75,9 +62,6 @@ st.markdown(
     "Inferences follow the `notes` field in `config/reference_ranges/ftir_bands.yaml`."
 )
 st.dataframe(inf_df, use_container_width=True, hide_index=True)
-
-st.subheader("Reference check status")
-st.dataframe(pd.DataFrame(merged_qc), use_container_width=True)
 
 html = build_html_report(
     "FTIR report",
@@ -90,7 +74,6 @@ html = build_html_report(
     ],
     figure_html=plot_html,
     inference_rows=merged_inference,
-    qc_rows=merged_qc,
 )
 st.download_button(
     "Download HTML report",
