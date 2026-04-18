@@ -1,0 +1,25 @@
+# Diagnostic 2theta regions (Cu Kα ~1.5406 Å) — indicative only; mineral ID needs full protocol.
+version: "0.1"
+assumptions:
+  radiation: "Cu Kα"
+  wavelength_angstrom: 1.5406
+  note: "d-spacings vary slightly with solid solution; use oriented clay mounts for clay ID."
+minerals:
+  - id: quartz_101
+    label: "Quartz (101) region"
+    two_theta_min: 26.0
+    two_theta_max: 27.0
+    source: "Powder diffraction handbooks / soil XRD tutorials"
+    notes: "Strongest quartz peak often near ~26.6° 2θ (Cu Kα)."
+  - id: calcite_104
+    label: "Calcite (104) region"
+    two_theta_min: 29.0
+    two_theta_max: 30.0
+    source: "Common soil carbonate peak ~29.4° 2θ (Cu Kα)"
+    notes: "Dolomite and other carbonates have different peaks."
+  - id: kaolinite_001
+    label: "Kaolinite basal ~7 Å (001)"
+    two_theta_min: 12.0
+    two_theta_max: 13.5
+    source: "Clay XRD references (basal spacing ~7 Å)"
+    notes: "Chlorite can interfere; confirm with clay fraction."

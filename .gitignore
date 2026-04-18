@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+.python-version
+env/
+*.egg-info/
+dist/
+build/
+data/external/
+models/*.pt
+models/*.pth
+models/*.json
+!models/README.md
+.DS_Store

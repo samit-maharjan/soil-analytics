@@ -1,0 +1,22 @@
+# Mid-IR band windows for qualitative soil / SOM screening (curate sources in production).
+# Wavenumbers in cm^-1, absorbance axis increasing wavenumber typical for many exports.
+version: "0.1"
+bands:
+  - id: aliphatic_ch
+    label: "Aliphatic C-H stretch"
+    wavenumber_min: 2850
+    wavenumber_max: 2960
+    source: "Margenot et al., IR Spectroscopy Soil Analysis Applications (review); typical alkyl C-H region"
+    notes: "Broad; overlaps with moisture; use as indicative only."
+  - id: carbonyl
+    label: "Carbonyl / carboxylate"
+    wavenumber_min: 1700
+    wavenumber_max: 1730
+    source: "Common FTIR SOM literature — carboxylic C=O"
+    notes: "Shift with H-bonding; not unique to one compound class."
+  - id: silicate_si_o
+    label: "Silicate / polysaccharide complex region"
+    wavenumber_min: 900
+    wavenumber_max: 1200
+    source: "Soil mineralogy and organic matter FTIR reviews"
+    notes: "Strong overlap between Si-O and C-O stretching; qualitative."

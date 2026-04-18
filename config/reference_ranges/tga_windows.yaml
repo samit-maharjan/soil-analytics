@@ -1,0 +1,25 @@
+# Temperature windows for comparative SOM partitioning — method-sensitive (atmosphere, rate, crucible).
+version: "0.1"
+assumptions:
+  atmosphere: "air or synthetic air (typical)"
+  heating_rate_c_per_min: 10
+  note: "Interpret mass-loss steps only alongside your recorded method parameters."
+windows:
+  - id: moisture_volatiles
+    label: "Moisture / low-temperature volatiles"
+    temp_min_c: 25
+    temp_max_c: 150
+    source: "General TGA soil / biomass literature"
+    notes: "Free water and some organics; not uniquely SOM."
+  - id: som_labile
+    label: "Comparative labile organic matter (broad)"
+    temp_min_c: 200
+    temp_max_c: 400
+    source: "Thermal analysis soil organic matter reviews"
+    notes: "Overlaps with some mineral dehydroxylation; use DTG for peaks."
+  - id: som_recalcitrant
+    label: "Higher-temperature organic / char-like loss (broad)"
+    temp_min_c: 400
+    temp_max_c: 700
+    source: "Literature discussing refractory soil carbon pools in TGA"
+    notes: "Not equal to biological recalcitrance."
