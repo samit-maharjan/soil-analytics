@@ -1,25 +1,51 @@
-# Temperature windows for comparative SOM partitioning — method-sensitive (atmosphere, rate, crucible).
+# Temperature windows for comparative mass-loss steps — lime-based binders, carbonated systems, and related soils.
+# Windows follow reference tables up to 850 °C; interpretation is method-sensitive (atmosphere, rate, crucible, sample mass).
 version: "0.1"
 assumptions:
-  atmosphere: "air or synthetic air (typical)"
+  atmosphere: "air or synthetic air (typical for binder carbonation studies)"
   heating_rate_c_per_min: 10
-  note: "Interpret mass-loss steps only alongside your recorded method parameters."
+  note: >-
+    Assignments overlap: C–S–H and clay dehydroxylation can span similar ranges to portlandite;
+    use DTG peak positions and complementary methods (XRD, FTIR). Literature often cites
+    portlandite decomposition near ~400–550 °C and calcite decarbonation from ~600 °C upward
+    (e.g. cementitious TGA reviews and calibrated TG schemes for Ca(OH)₂ / CaCO₃).
 windows:
-  - id: moisture_volatiles
-    label: "Moisture / low-temperature volatiles"
-    temp_min_c: 25
-    temp_max_c: 150
-    source: "General TGA soil / biomass literature"
-    notes: "Free water and some organics; not uniquely SOM."
-  - id: som_labile
-    label: "Comparative labile organic matter (broad)"
+  - id: free_moisture
+    label: "Physically adsorbed water / free moisture"
+    temp_min_c: 0
+    temp_max_c: 200
+    source: "Laboratory TGA reference tables (lime mortar); general TG — evaporation of pore and hygroscopic water below ~200 °C"
+    notes: >-
+      Pore-water and hygroscopic moisture loss; reflects porosity and moisture retention.
+      Sample-to-sample differences in retained water are common.
+
+  - id: bound_water_volatiles
+    label: "Bound water / minor hydrated or volatile phases"
     temp_min_c: 200
     temp_max_c: 400
-    source: "Thermal analysis soil organic matter reviews"
-    notes: "Overlaps with some mineral dehydroxylation; use DTG for peaks."
-  - id: som_recalcitrant
-    label: "Higher-temperature organic / char-like loss (broad)"
+    source: "Laboratory TGA tables; overlaps with water from C–S–H / aluminosilicates and trace organics in some matrices"
+    notes: >-
+      Chemically bound water from minor hydraulic products or clay-related phases; may be
+      weak if hydration is limited. Possible trace organic or impurity volatiles — not unique.
+
+  - id: portlandite_clay_dehydroxylation
+    label: "Portlandite (Ca(OH)₂) and clay dehydroxylation"
     temp_min_c: 400
-    temp_max_c: 700
-    source: "Literature discussing refractory soil carbon pools in TGA"
-    notes: "Not equal to biological recalcitrance."
+    temp_max_c: 600
+    source: >-
+      Laboratory TGA tables; literature — Ca(OH)₂ dehydroxylation commonly centered ~400–550 °C
+      (cement / lime paste TG; e.g. quantitative TG schemes for hydrated systems)
+    notes: >-
+      Residual lime and dehydroxylation of clay minerals; indicates incomplete carbonation or
+      presence of hydrated constituents. Overlaps with hydraulic reaction products in blended systems.
+
+  - id: calcite_decarbonation
+    label: "Calcite (CaCO₃) decarbonation"
+    temp_min_c: 600
+    temp_max_c: 850
+    source: >-
+      Laboratory TGA tables; literature — CaCO₃ decomposition typically strong from ~600–800+ °C
+      in air (exact DTG peak varies with heating rate, CO₂ partial pressure, crystal size)
+    notes: >-
+      Major CO₂ loss from carbonate; confirms carbonated binder when consistent with other data.
+      Relative step size reflects degree of carbonation vs. other phases.
