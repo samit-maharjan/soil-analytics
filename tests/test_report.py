@@ -22,7 +22,7 @@ def test_build_html_report() -> None:
         "T",
         [("Sec", "intro", checks)],
         figure_html=None,
-        inference_rows=[{"Band": "b", "Peak wavenumber (cm⁻¹)": "100", "Inference": "note", "Status": "pass"}],
+        inference_rows=[{"Band": "b", "Peak wavenumber (cm⁻¹)": "100", "Inference": "note"}],
     )
     assert "Band inferences" in html2
     assert "note" in html2

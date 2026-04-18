@@ -3,7 +3,13 @@
 from pathlib import Path
 
 from soil_analytics.parsers import parse_ftir_csv, parse_tga_csv, parse_xrd_csv
-from soil_analytics.reference_checks import check_ftir, check_tga, check_xrd
+from soil_analytics.reference_checks import (
+    CheckResult,
+    check_ftir,
+    check_tga,
+    check_xrd,
+    ftir_merged_inference_rows,
+)
 
 FIX = Path(__file__).parent / "fixtures"
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,6 +23,17 @@ def test_ftir_checks() -> None:
     assert len(results) >= 1
     ids = {r.check_id for r in results}
     assert "aliphatic_ch" in ids
+
+
+def test_ftir_merged_inference_rows() -> None:
+    a = CheckResult("b1", "Band A", "pass", "m", {"peak_wavenumber_cm1": 100.0, "notes": "n1"})
+    b = CheckResult("b1", "Band A", "pass", "m", {"peak_wavenumber_cm1": 200.0, "notes": "n1"})
+    merged = ftir_merged_inference_rows([[a], [b]])
+    assert len(merged) == 1
+    assert merged[0]["Band"] == "Band A"
+    assert merged[0]["Peak wavenumber (cm⁻¹)"] == "100.0, 200.0"
+    assert merged[0]["Inference"] == "n1"
+    assert "Status" not in merged[0]
 
 
 def test_xrd_checks() -> None:

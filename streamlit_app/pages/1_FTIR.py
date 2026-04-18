@@ -10,7 +10,7 @@ from soil_analytics.parsers import parse_ftir_csv
 from soil_analytics.paths import reference_config_dir
 from soil_analytics.schemas import FTIRSeries
 from soil_analytics.plots import figure_to_embed_html, plot_ftir_multi
-from soil_analytics.reference_checks import check_ftir, ftir_inference_rows
+from soil_analytics.reference_checks import check_ftir, ftir_merged_inference_rows
 from soil_analytics.report import build_html_report
 
 st.set_page_config(page_title="FTIR", layout="wide")
@@ -52,34 +52,21 @@ st.pyplot(fig)
 plt.close(fig)
 
 cfg = reference_config_dir() / "ftir_bands.yaml"
-merged_inference: list[dict[str, str]] = []
-merged_qc: list[dict[str, str]] = []
+all_results = [check_ftir(s, config_path=cfg) for _, s in parsed]
+merged_inference = ftir_merged_inference_rows(all_results)
 
-for name, s in parsed:
-    results = check_ftir(s, config_path=cfg)
-    if multi:
-        merged_inference.extend(ftir_inference_rows(results, sample=name))
-        for r in results:
-            merged_qc.append(
-                {
-                    "Sample": name,
-                    "id": r.check_id,
-                    "label": r.label,
-                    "status": r.status,
-                    "message": r.message,
-                }
-            )
-    else:
-        merged_inference.extend(ftir_inference_rows(results))
-        for r in results:
-            merged_qc.append(
-                {
-                    "id": r.check_id,
-                    "label": r.label,
-                    "status": r.status,
-                    "message": r.message,
-                }
-            )
+merged_qc: list[dict[str, str]] = []
+for name, results in zip([n for n, _ in parsed], all_results, strict=True):
+    for r in results:
+        qc_row: dict[str, str] = {
+            "id": r.check_id,
+            "label": r.label,
+            "status": r.status,
+            "message": r.message,
+        }
+        if multi:
+            qc_row = {"Sample": name, **qc_row}
+        merged_qc.append(qc_row)
 
 inf_df = pd.DataFrame(merged_inference)
 st.subheader("Band inferences (reference ranges)")

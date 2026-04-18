@@ -113,6 +113,42 @@ def ftir_inference_rows(
     return rows
 
 
+def ftir_merged_inference_rows(results_per_sample: list[list[CheckResult]]) -> list[dict[str, str]]:
+    """
+    One row per band across all samples: peak wavenumbers as comma-separated values (sample order
+    matches ``results_per_sample``). Columns: Band, Peak wavenumber (cm⁻¹), Inference.
+    """
+    if not results_per_sample:
+        return []
+    n = len(results_per_sample[0])
+    for res in results_per_sample[1:]:
+        if len(res) != n:
+            raise ValueError("Inconsistent FTIR band count across samples (use the same ftir_bands.yaml).")
+    rows: list[dict[str, str]] = []
+    for i in range(n):
+        r0 = results_per_sample[0][i]
+        peaks: list[str] = []
+        for res in results_per_sample:
+            r = res[i]
+            if r.check_id != r0.check_id:
+                raise ValueError("FTIR band ordering differs across samples.")
+            ev = r.evidence or {}
+            p = ev.get("peak_wavenumber_cm1")
+            peaks.append(f"{float(p):.1f}" if p is not None else "—")
+        peak_str = ", ".join(peaks)
+        ev0 = r0.evidence or {}
+        notes = (ev0.get("notes") or "").strip()
+        inference = notes if notes else r0.message
+        rows.append(
+            {
+                "Band": r0.label,
+                "Peak wavenumber (cm⁻¹)": peak_str,
+                "Inference": inference,
+            }
+        )
+    return rows
+
+
 def check_xrd(
     pattern: XRDPattern,
     config_path: Path | None = None,
