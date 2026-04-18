@@ -1,6 +1,7 @@
-"""FESEM and image ML utilities."""
+"""
+Optional FESEM / image ML (PyTorch).
 
-from soil_analytics.ml.supervised import predict_images_from_bytes, train_supervised
-from soil_analytics.ml.unsupervised import run_unsupervised_pipeline
+Install with: ``pip install soil-analytics[ml]``
 
-__all__ = ["train_supervised", "predict_images_from_bytes", "run_unsupervised_pipeline"]
+Import concrete modules directly, e.g. ``soil_analytics.ml.supervised``.
+"""

@@ -1,4 +1,4 @@
-"""Unsupervised FESEM: embeddings, clustering, UMAP, simple anomaly scores."""
+"""Unsupervised FESEM: embeddings, PCA 2D view, clustering, Mahalanobis-style anomaly scores."""
 
 from __future__ import annotations
 
@@ -9,19 +9,11 @@ import numpy as np
 import timm
 import torch
 from PIL import Image
+from sklearn.cluster import KMeans
 from sklearn.covariance import EmpiricalCovariance
+from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from torchvision import transforms
-
-try:
-    import umap
-except ImportError:  # pragma: no cover
-    umap = None
-
-try:
-    import hdbscan
-except ImportError:  # pragma: no cover
-    hdbscan = None
 
 
 def _device() -> torch.device:
@@ -89,7 +81,9 @@ def run_unsupervised_pipeline(
     random_state: int = 42,
 ) -> dict[str, Any]:
     """
-    Embeddings -> standardize -> optional UMAP -> HDBSCAN clusters -> Mahalanobis anomaly score.
+    Embeddings -> standardize -> PCA (2D) -> k-means clusters -> Mahalanobis anomaly score.
+
+    Uses PCA instead of UMAP to avoid an extra heavy dependency; interpret as linear projection.
     """
     names, X = extract_embeddings_from_bytes(files, backbone=backbone)
     if X.size == 0:
@@ -98,16 +92,20 @@ def run_unsupervised_pipeline(
     scaler = StandardScaler()
     Z = scaler.fit_transform(X)
 
-    umap_coords: np.ndarray | None = None
-    if umap is not None and len(names) >= 5:
-        reducer = umap.UMAP(n_components=2, random_state=random_state, min_dist=0.1)
-        umap_coords = reducer.fit_transform(Z)
+    embedding_2d: np.ndarray | None = None
+    if len(names) >= 3:
+        n_comp = min(2, Z.shape[0] - 1, Z.shape[1])
+        if n_comp >= 1:
+            pca = PCA(n_components=n_comp, random_state=random_state)
+            embedding_2d = pca.fit_transform(Z)
+            if embedding_2d.shape[1] == 1:
+                embedding_2d = np.column_stack([embedding_2d, np.zeros(len(names))])
 
     labels = np.full(len(names), -1, dtype=int)
-    if hdbscan is not None and len(names) >= 3:
-        min_cs = max(2, min(5, len(names) // 3))
-        clusterer = hdbscan.HDBSCAN(min_cluster_size=min_cs)
-        labels = clusterer.fit_predict(Z)
+    if len(names) >= 3:
+        k = max(2, min(5, len(names) // 2))
+        km = KMeans(n_clusters=k, random_state=random_state, n_init=10)
+        labels = km.fit_predict(Z)
 
     anomalies: list[float] = []
     try:
@@ -123,7 +121,7 @@ def run_unsupervised_pipeline(
     return {
         "names": names,
         "embeddings": X,
-        "umap": umap_coords,
+        "embedding_2d": embedding_2d,
         "cluster_labels": labels.tolist(),
         "anomaly_score": anomalies,
         "backbone": backbone,

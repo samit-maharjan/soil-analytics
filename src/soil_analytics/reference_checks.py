@@ -8,8 +8,8 @@ from typing import Any, Literal
 
 import numpy as np
 import yaml
-from scipy.signal import find_peaks
 
+from soil_analytics._signal import has_prominent_peak
 from soil_analytics.paths import project_root
 from soil_analytics.schemas import FTIRSeries, TGACurve, XRDPattern
 
@@ -60,13 +60,8 @@ def check_ftir(
         peak_idx = int(np.argmax(seg_y) if not invert else np.argmin(seg_y))
         peak_wn = float(seg_wn[peak_idx])
         peak_val = float(seg_y[peak_idx])
-        # local maxima for absorbance
-        if not invert and len(seg_y) >= 5:
-            peaks, _ = find_peaks(seg_y, prominence=np.std(seg_y) * 0.3)
-            has_peak = len(peaks) > 0
-        elif invert and len(seg_y) >= 5:
-            peaks, _ = find_peaks(-seg_y, prominence=np.std(seg_y) * 0.3)
-            has_peak = len(peaks) > 0
+        if len(seg_y) >= 5:
+            has_peak = has_prominent_peak(seg_y, invert=invert, prominence_scale=0.3)
         else:
             has_peak = True
 

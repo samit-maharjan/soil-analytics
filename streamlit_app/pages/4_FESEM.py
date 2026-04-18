@@ -1,15 +1,13 @@
-"""FESEM: supervised inference and unsupervised clustering."""
+"""FESEM: supervised inference and unsupervised clustering (optional [ml] extra)."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import pandas as pd
-import plotly.graph_objects as go
 import streamlit as st
 
-from soil_analytics.ml.supervised import predict_images_from_bytes
-from soil_analytics.ml.unsupervised import run_unsupervised_pipeline
 from soil_analytics.paths import models_dir, project_root
 
 st.set_page_config(page_title="FESEM", layout="wide")
@@ -18,6 +16,17 @@ st.caption(
     "Supervised: load a model trained with scripts/train_fesem_supervised.py. "
     "Unsupervised: embeddings with a pretrained backbone (no labels required)."
 )
+
+try:
+    from soil_analytics.ml.supervised import predict_images_from_bytes
+    from soil_analytics.ml.unsupervised import run_unsupervised_pipeline
+except ImportError as e:
+    st.error(
+        "FESEM ML dependencies are not installed. "
+        "Install with: `pip install soil-analytics[ml]` "
+        f"(import error: {e})"
+    )
+    st.stop()
 
 default_model = models_dir() / "fesem_supervised"
 
@@ -50,9 +59,14 @@ with tab_sup:
             for row in preds:
                 st.subheader(row["path"])
                 probs = row["probabilities"]
-                fig = go.Figure(go.Bar(x=list(probs.keys()), y=list(probs.values())))
-                fig.update_layout(title="Class probabilities", height=320)
-                st.plotly_chart(fig, use_container_width=True)
+                fig, ax = plt.subplots(figsize=(6, 3))
+                ax.bar(list(probs.keys()), list(probs.values()), color="steelblue")
+                ax.set_ylabel("Probability")
+                ax.set_title("Class probabilities")
+                plt.xticks(rotation=25, ha="right")
+                fig.tight_layout()
+                st.pyplot(fig)
+                plt.close(fig)
 
 with tab_unsup:
     backbone = st.selectbox("Backbone (ImageNet pretrained)", ["resnet18", "efficientnet_b0"], index=0)
@@ -77,20 +91,27 @@ with tab_unsup:
                 }
             )
             st.dataframe(df, use_container_width=True)
-            umap_coords = out.get("umap")
-            if umap_coords is not None and len(out["names"]) >= 5:
-                fig = go.Figure(
-                    go.Scatter(
-                        x=umap_coords[:, 0],
-                        y=umap_coords[:, 1],
-                        mode="markers+text",
-                        text=out["names"],
-                        marker=dict(size=10, color=out["cluster_labels"], colorscale="Viridis"),
-                    )
+            emb = out.get("embedding_2d")
+            if emb is not None and len(out["names"]) >= 3:
+                fig, ax = plt.subplots(figsize=(7, 5))
+                sc = ax.scatter(
+                    emb[:, 0],
+                    emb[:, 1],
+                    c=out["cluster_labels"],
+                    cmap="viridis",
+                    s=60,
+                    alpha=0.85,
                 )
-                fig.update_layout(title="UMAP of embeddings", height=500)
-                st.plotly_chart(fig, use_container_width=True)
-            elif len(out["names"]) < 5:
-                st.info("UMAP needs at least 5 images; showing table only.")
+                for i, name in enumerate(out["names"]):
+                    ax.annotate(name, (emb[i, 0], emb[i, 1]), fontsize=7, alpha=0.8)
+                ax.set_title("2D embedding (PCA of standardized features)")
+                ax.set_xlabel("PC1")
+                ax.set_ylabel("PC2")
+                fig.colorbar(sc, ax=ax, label="cluster")
+                fig.tight_layout()
+                st.pyplot(fig)
+                plt.close(fig)
+            elif len(out["names"]) < 3:
+                st.info("PCA scatter needs at least 3 images; showing table only.")
 
 st.markdown(f"Project root resolved as: `{project_root()}`")

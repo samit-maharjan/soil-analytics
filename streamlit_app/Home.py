@@ -14,8 +14,8 @@ st.markdown(
     """
 Use the sidebar to open **FTIR**, **XRD**, **TGA**, **FESEM**, or **About**.
 
-- **FTIR / XRD / TGA**: upload CSV, view interactive plots, run literature-based range checks, download an HTML report.
-- **FESEM**: supervised classification (after you train a model) or unsupervised embeddings and clustering.
+- **FTIR / XRD / TGA**: upload CSV, view plots, run literature-based range checks, download an HTML report.
+- **FESEM** (optional): install with `pip install soil-analytics[ml]` for PyTorch-backed supervised and unsupervised workflows.
 
 Run from the repository root: `streamlit run streamlit_app/Home.py`
 """

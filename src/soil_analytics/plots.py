@@ -1,89 +1,65 @@
-"""Plotly figures for FTIR, XRD, TGA."""
+"""Matplotlib figures for FTIR, XRD, TGA (lighter than Plotly for this app)."""
 
 from __future__ import annotations
 
-import plotly.graph_objects as go
+import base64
+import io
+
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
 from soil_analytics.schemas import FTIRSeries, TGACurve, XRDPattern
 
 
-def plot_ftir(series: FTIRSeries) -> go.Figure:
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=series.wavenumber_cm1,
-            y=series.y,
-            mode="lines",
-            name=series.y_label,
-        )
-    )
-    fig.update_layout(
-        title="FTIR",
-        xaxis_title="Wavenumber (cm⁻¹)",
-        yaxis_title=series.y_label,
-        xaxis=dict(autorange="reversed"),
-        height=450,
-        margin=dict(l=50, r=20, t=50, b=50),
-    )
+def plot_ftir(series: FTIRSeries) -> Figure:
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    ax.plot(series.wavenumber_cm1, series.y, color="C0", lw=1.2)
+    ax.set_title("FTIR")
+    ax.set_xlabel("Wavenumber (cm⁻¹)")
+    ax.set_ylabel(series.y_label)
+    ax.invert_xaxis()
+    fig.tight_layout()
     return fig
 
 
-def plot_xrd(pattern: XRDPattern) -> go.Figure:
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=pattern.two_theta_deg,
-            y=pattern.intensity,
-            mode="lines",
-            name="Intensity",
-        )
-    )
-    fig.update_layout(
-        title="XRD",
-        xaxis_title="2θ (degrees)",
-        yaxis_title="Intensity",
-        height=450,
-        margin=dict(l=50, r=20, t=50, b=50),
-    )
+def plot_xrd(pattern: XRDPattern) -> Figure:
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    ax.plot(pattern.two_theta_deg, pattern.intensity, color="C0", lw=1.0)
+    ax.set_title("XRD")
+    ax.set_xlabel("2θ (degrees)")
+    ax.set_ylabel("Intensity")
+    fig.tight_layout()
     return fig
 
 
-def plot_tga(curve: TGACurve) -> go.Figure:
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=curve.temperature_c,
-            y=curve.mass,
-            mode="lines",
-            name=curve.mass_label,
-            yaxis="y",
-        )
-    )
+def plot_tga(curve: TGACurve) -> Figure:
+    fig, ax1 = plt.subplots(figsize=(9, 4.5))
+    ax1.plot(curve.temperature_c, curve.mass, color="C0", lw=1.2, label=curve.mass_label)
+    ax1.set_xlabel("Temperature (°C)")
+    ax1.set_ylabel(curve.mass_label)
+    ax1.set_title("TGA")
     if curve.dtg is not None:
-        fig.add_trace(
-            go.Scatter(
-                x=curve.temperature_c,
-                y=curve.dtg,
-                mode="lines",
-                name="DTG (dm/dT)",
-                yaxis="y2",
-            )
+        ax2 = ax1.twinx()
+        ax2.plot(
+            curve.temperature_c,
+            curve.dtg,
+            color="C1",
+            lw=1.0,
+            alpha=0.85,
+            label="DTG (dm/dT)",
         )
-    layout_updates: dict = dict(
-        title="TGA",
-        xaxis_title="Temperature (°C)",
-        height=450,
-        margin=dict(l=50, r=60, t=50, b=50),
-    )
-    if curve.dtg is not None:
-        layout_updates["yaxis"] = dict(title=curve.mass_label)
-        layout_updates["yaxis2"] = dict(title="DTG", overlaying="y", side="right")
-    else:
-        layout_updates["yaxis_title"] = curve.mass_label
-    fig.update_layout(**layout_updates)
+        ax2.set_ylabel("DTG")
+        lines1, lab1 = ax1.get_legend_handles_labels()
+        lines2, lab2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines1 + lines2, lab1 + lab2, loc="upper right")
+    fig.tight_layout()
     return fig
 
 
-def figure_to_embed_html(fig: go.Figure) -> str:
-    """Fragment HTML for embedding in a larger report."""
-    return fig.to_html(full_html=False, include_plotlyjs="cdn")
+def figure_to_embed_html(fig: Figure, dpi: int = 120) -> str:
+    """PNG fragment for HTML reports (no external JS)."""
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
+    buf.seek(0)
+    b64 = base64.b64encode(buf.read()).decode("ascii")
+    return f'<p><img src="data:image/png;base64,{b64}" alt="plot" /></p>'

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
@@ -29,7 +30,9 @@ except Exception as e:
     st.stop()
 
 fig = plot_xrd(pattern)
-st.plotly_chart(fig, use_container_width=True)
+plot_html = figure_to_embed_html(fig)
+st.pyplot(fig)
+plt.close(fig)
 
 cfg = reference_config_dir() / "xrd_peaks.yaml"
 results = check_xrd(pattern, config_path=cfg)
@@ -48,7 +51,7 @@ html = build_html_report(
             results,
         )
     ],
-    figure_html=figure_to_embed_html(fig),
+    figure_html=plot_html,
 )
 st.download_button(
     "Download HTML report",
