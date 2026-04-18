@@ -16,7 +16,7 @@ st.markdown(
 
 ### FESEM
 
-- **Supervised** models are trained on your labeled image folder or transfer from public data; treat outputs as **assistive** until validated on your soil images.
+- **Supervised** models are trained on **your** labeled images under `data/fesem_supervised/` (PyTorch ImageFolder: one subfolder per class). Treat outputs as **assistive** until validated on your instrument and samples.
 - **Unsupervised** clustering and anomaly scores help prioritize images for expert review; they are not ground truth labels.
 - FESEM requires the optional ML stack: `pip install soil-analytics[ml]`
 
@@ -30,12 +30,5 @@ streamlit run streamlit_app/Home.py
 ```
 
 Ensure you run the command from the repository root so `config/` resolves correctly.
-
-### Optional: Kaggle downloads
-
-```text
-pip install soil-analytics[kaggle]
-python scripts/download_kaggle_dataset.py username/dataset-name
-```
 """
 )

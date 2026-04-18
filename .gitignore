@@ -10,6 +10,9 @@ env/
 dist/
 build/
 data/external/
+# Local FESEM ImageFolder — keep README; ignore class folders and images
+data/fesem_supervised/*
+!data/fesem_supervised/README.md
 models/*.pt
 models/*.pth
 models/*.json

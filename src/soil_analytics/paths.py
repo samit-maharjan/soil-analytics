@@ -29,3 +29,8 @@ def reference_config_dir() -> Path:
 
 def models_dir() -> Path:
     return project_root() / "models"
+
+
+def fesem_supervised_data_dir() -> Path:
+    """ImageFolder root for supervised FESEM training (`class_name/*.png` under this path)."""
+    return project_root() / "data" / "fesem_supervised"

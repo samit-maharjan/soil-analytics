@@ -26,7 +26,6 @@ ml = [
   "timm>=0.9",
   "tqdm>=4.66",
 ]
-kaggle = ["kagglehub>=0.2"]
 dev = ["pytest>=7.4", "ruff>=0.1"]
 
 [tool.setuptools.packages.find]

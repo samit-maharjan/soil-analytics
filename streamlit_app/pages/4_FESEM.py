@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
-from soil_analytics.paths import models_dir, project_root
+from soil_analytics.paths import fesem_supervised_data_dir, models_dir, project_root
 
 st.set_page_config(page_title="FESEM", layout="wide")
 st.title("FESEM")
@@ -33,9 +33,12 @@ default_model = models_dir() / "fesem_supervised"
 tab_sup, tab_unsup = st.tabs(["Supervised inference", "Unsupervised analysis"])
 
 with tab_sup:
+    data_root = fesem_supervised_data_dir()
     st.markdown(
         f"Default model directory: `{default_model}`. "
-        "Train with: `python scripts/train_fesem_supervised.py --data-dir /path/to/ImageFolder`"
+        f"Supervised training data (ImageFolder): `{data_root}` — add class subfolders and images, then run "
+        "`python scripts/train_fesem_supervised.py` (or pass `--data-dir` for another folder). "
+        "See `data/fesem_supervised/README.md`."
     )
     model_path = Path(
         st.text_input("Model directory", value=str(default_model), key="fesem_model_dir")
