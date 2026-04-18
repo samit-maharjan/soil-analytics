@@ -28,8 +28,11 @@ def build_html_report(
     sections: list[tuple[str, str, list[CheckResult] | None]],
     figure_html: str | None = None,
     inference_rows: list[dict[str, str]] | None = None,
+    qc_rows: list[dict[str, str]] | None = None,
 ) -> str:
-    """sections: (heading, intro markdown text, optional checks). Optional ``inference_rows`` adds a band table."""
+    """sections: (heading, intro markdown text, optional checks).
+    Optional ``inference_rows`` / ``qc_rows`` add tables (e.g. multi-sample FTIR).
+    """
     parts: list[str] = []
     ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     parts.append("<!DOCTYPE html><html><head><meta charset='utf-8'>")
@@ -53,6 +56,20 @@ def build_html_report(
             parts.append(f"<th>{html.escape(k)}</th>")
         parts.append("</tr></thead><tbody>")
         for row in inference_rows:
+            parts.append("<tr>")
+            for k in keys:
+                parts.append(f"<td>{html.escape(str(row.get(k, '')))}</td>")
+            parts.append("</tr>")
+        parts.append("</tbody></table>")
+
+    if qc_rows:
+        parts.append("<h2>Reference check status</h2>")
+        keys = list(qc_rows[0].keys())
+        parts.append("<table><thead><tr>")
+        for k in keys:
+            parts.append(f"<th>{html.escape(k)}</th>")
+        parts.append("</tr></thead><tbody>")
+        for row in qc_rows:
             parts.append("<tr>")
             for k in keys:
                 parts.append(f"<td>{html.escape(str(row.get(k, '')))}</td>")

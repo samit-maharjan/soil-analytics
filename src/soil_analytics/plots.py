@@ -11,6 +11,52 @@ from matplotlib.figure import Figure
 from soil_analytics.schemas import FTIRSeries, TGACurve, XRDPattern
 
 
+def plot_ftir_multi(
+    series_list: list[FTIRSeries],
+    labels: list[str] | None = None,
+    title: str | None = None,
+) -> Figure:
+    """Overlay several spectra with distinct colors and a legend."""
+    if not series_list:
+        raise ValueError("series_list must not be empty")
+    fig, ax = plt.subplots(figsize=(11, 5.5))
+    if labels is None:
+        labels = [s.source_name or f"series_{i}" for i, s in enumerate(series_list)]
+    if len(labels) != len(series_list):
+        raise ValueError("labels must match series_list length")
+
+    palette = [f"C{i}" for i in range(10)]
+    wn_mins: list[float] = []
+    wn_maxs: list[float] = []
+    for i, s in enumerate(series_list):
+        c = palette[i % len(palette)]
+        ax.plot(s.wavenumber_cm1, s.y, color=c, lw=1.0, label=labels[i])
+        wn_mins.append(float(s.wavenumber_cm1.min()))
+        wn_maxs.append(float(s.wavenumber_cm1.max()))
+
+    ax.set_title(title or "FTIR spectra (overlay)")
+    ax.set_xlabel("Wavenumber (cm⁻¹)")
+    y0 = series_list[0]
+    if all(s.y_label == y0.y_label for s in series_list):
+        if y0.y_label == "transmittance":
+            yl = "Transmittance (%T)" if float(max(s.y.max() for s in series_list)) > 1.5 else "Transmittance"
+        elif y0.y_label == "absorbance":
+            yl = "Absorbance"
+        elif y0.y_label == "reflectance":
+            yl = "Reflectance"
+        else:
+            yl = y0.y_label.capitalize()
+    else:
+        yl = "Response (mixed units)"
+    ax.set_ylabel(yl)
+    ax.invert_xaxis()
+    ax.grid(True, alpha=0.35, linestyle="-", linewidth=0.5)
+    ax.set_xlim(max(wn_maxs), min(wn_mins))
+    ax.legend(loc="best", fontsize=8, framealpha=0.9)
+    fig.tight_layout()
+    return fig
+
+
 def plot_ftir(series: FTIRSeries, title: str | None = None) -> Figure:
     """Spectrum plot: decreasing wavenumber left-to-right (typical MIR convention)."""
     fig, ax = plt.subplots(figsize=(10, 5))

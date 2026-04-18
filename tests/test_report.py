@@ -26,3 +26,13 @@ def test_build_html_report() -> None:
     )
     assert "Band inferences" in html2
     assert "note" in html2
+
+    html3 = build_html_report(
+        "T",
+        [("Sec", "intro", None)],
+        figure_html=None,
+        inference_rows=[{"Sample": "a.txt", "Band": "b", "Peak wavenumber (cm⁻¹)": "100", "Inference": "n", "Status": "pass"}],
+        qc_rows=[{"Sample": "a.txt", "id": "x", "label": "L", "status": "pass", "message": "m"}],
+    )
+    assert "Reference check status" in html3
+    assert "a.txt" in html3

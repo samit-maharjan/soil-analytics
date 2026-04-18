@@ -84,10 +84,14 @@ def check_ftir(
     return results
 
 
-def ftir_inference_rows(results: list[CheckResult]) -> list[dict[str, str]]:
+def ftir_inference_rows(
+    results: list[CheckResult],
+    sample: str | None = None,
+) -> list[dict[str, str]]:
     """
     Turn FTIR band check results into rows for a band table: peak wavenumber and qualitative inference.
     Inference text comes from YAML ``notes`` when present; otherwise the check message.
+    If ``sample`` is set, a ``Sample`` column is included (for multi-spectrum tables).
     """
     rows: list[dict[str, str]] = []
     for r in results:
@@ -96,14 +100,16 @@ def ftir_inference_rows(results: list[CheckResult]) -> list[dict[str, str]]:
         notes = (ev.get("notes") or "").strip()
         wn_str = f"{float(peak):.1f}" if peak is not None else "—"
         inference = notes if notes else r.message
-        rows.append(
-            {
-                "Band": r.label,
-                "Peak wavenumber (cm⁻¹)": wn_str,
-                "Inference": inference,
-                "Status": r.status,
-            }
-        )
+        row: dict[str, str] = {
+            "Band": r.label,
+            "Peak wavenumber (cm⁻¹)": wn_str,
+            "Inference": inference,
+            "Status": r.status,
+        }
+        if sample is not None:
+            rows.append({"Sample": sample, **row})
+        else:
+            rows.append(row)
     return rows
 
 
