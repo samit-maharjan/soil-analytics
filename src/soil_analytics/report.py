@@ -29,9 +29,12 @@ def build_html_report(
     figure_html: str | None = None,
     inference_rows: list[dict[str, str]] | None = None,
     qc_rows: list[dict[str, str]] | None = None,
+    *,
+    inference_heading: str = "Band inferences (reference ranges)",
+    inference_intro: str | None = None,
 ) -> str:
     """sections: (heading, intro markdown text, optional checks).
-    Optional ``inference_rows`` / ``qc_rows`` add tables (e.g. multi-sample FTIR).
+    Optional ``inference_rows`` / ``qc_rows`` add tables (e.g. multi-sample FTIR / XRD phases).
     """
     parts: list[str] = []
     ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
@@ -45,11 +48,14 @@ def build_html_report(
     parts.append(f"<h1>{html.escape(title)}</h1><p><small>Generated {html.escape(ts)}</small></p>")
 
     if inference_rows:
-        parts.append("<h2>Band inferences (reference ranges)</h2>")
-        parts.append(
-            "<p>Peak wavenumbers are extrema per configured window; inferences follow YAML notes in "
-            "<code>config/reference_ranges/ftir_bands.yaml</code>.</p>"
-        )
+        parts.append(f"<h2>{html.escape(inference_heading)}</h2>")
+        intro = inference_intro
+        if intro is None:
+            intro = (
+                "Peak wavenumbers are extrema per configured window; inferences follow YAML notes in "
+                "<code>config/reference_ranges/ftir_bands.yaml</code>."
+            )
+        parts.append(f"<p>{html.escape(intro)}</p>")
         keys = list(inference_rows[0].keys())
         parts.append("<table><thead><tr>")
         for k in keys:

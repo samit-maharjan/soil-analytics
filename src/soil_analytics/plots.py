@@ -6,9 +6,11 @@ import base64
 import io
 
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.figure import Figure
 
 from soil_analytics.schemas import FTIRSeries, TGACurve, XRDPattern
+from soil_analytics.xrd_phases import PhaseHit
 
 
 def plot_ftir_multi(
@@ -85,6 +87,62 @@ def plot_xrd(pattern: XRDPattern) -> Figure:
     ax.set_title("XRD")
     ax.set_xlabel("2θ (degrees)")
     ax.set_ylabel("Intensity")
+    fig.tight_layout()
+    return fig
+
+
+def plot_xrd_stacked(
+    patterns: list[XRDPattern],
+    labels: list[str],
+    hits_per_pattern: list[list[PhaseHit]],
+    *,
+    title: str | None = None,
+) -> Figure:
+    """Vertically stacked traces (offset intensity) with phase letter annotations (P / M / C)."""
+    if not patterns:
+        raise ValueError("patterns must not be empty")
+    if len(labels) != len(patterns) or len(hits_per_pattern) != len(patterns):
+        raise ValueError("labels and hits_per_pattern must match patterns length")
+
+    spans = [float(p.intensity.max()) - float(p.intensity.min()) for p in patterns]
+    span = max(spans) if spans else 1.0
+    pad = max(span * 0.12, 1.0)
+    stack_step = span + pad
+
+    # Bottom to top: black, red, blue (then cycle matplotlib colors).
+    fixed = ["#1a1a1a", "#d62728", "#1f77b4"]
+
+    fig, ax = plt.subplots(figsize=(11, 6.2))
+    for i, p in enumerate(patterns):
+        tt = p.two_theta_deg
+        iy = p.intensity.astype(float)
+        y0 = float(iy.min())
+        y_norm = iy - y0
+        offset = i * stack_step
+        y_plot = y_norm + offset
+        color = fixed[i] if i < len(fixed) else f"C{i}"
+        ax.plot(tt, y_plot, color=color, lw=0.9, label=labels[i])
+
+        for h in hits_per_pattern[i]:
+            idx = int(np.argmin(np.abs(tt - h.two_theta_deg)))
+            y_peak = float(y_plot[idx])
+            ax.annotate(
+                h.symbol,
+                xy=(h.two_theta_deg, y_peak),
+                xytext=(0, 8),
+                textcoords="offset points",
+                ha="center",
+                fontsize=9,
+                color=color,
+            )
+
+    ax.set_title(title or ("XRD (stacked)" if len(patterns) > 1 else (labels[0] if labels else "XRD")))
+    ax.set_xlabel("2θ (degrees)")
+    ax.set_ylabel("Intensity (a.u.)")
+    ax.set_xlim(10.0, 80.0)
+    ax.grid(True, alpha=0.35, linestyle="-", linewidth=0.5)
+    if len(patterns) > 1:
+        ax.legend(loc="upper right", fontsize=8, framealpha=0.9)
     fig.tight_layout()
     return fig
 
