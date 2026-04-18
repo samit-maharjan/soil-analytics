@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import io
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -143,6 +144,128 @@ def plot_xrd_stacked(
     ax.grid(True, alpha=0.35, linestyle="-", linewidth=0.5)
     if len(patterns) > 1:
         ax.legend(loc="upper right", fontsize=8, framealpha=0.9)
+    fig.tight_layout()
+    return fig
+
+
+def tga_mass_at_temp(temperature_c: np.ndarray, mass: np.ndarray, t_query: float) -> float:
+    return float(
+        np.interp(
+            t_query,
+            temperature_c.astype(float),
+            mass.astype(float),
+            left=float(mass[0]),
+            right=float(mass[-1]),
+        )
+    )
+
+
+def plot_tga_multi_reference(
+    curves: list[TGACurve],
+    windows: list[dict[str, Any]],
+    *,
+    title: str | None = None,
+    y_axis_label: str | None = None,
+) -> Figure:
+    """
+    Overlay TG curves (temperature vs mass or TG %) with bracket-style mass-change
+    annotations per reference temperature window (from ``tga_windows.yaml`` ``windows``).
+    """
+    if not curves:
+        raise ValueError("curves must not be empty")
+
+    fig, ax = plt.subplots(figsize=(10.5, 5.5))
+    palette = [f"C{i % 10}" for i in range(max(len(curves), 10))]
+
+    y_label = y_axis_label
+    if y_label is None:
+        ml0 = curves[0].mass_label.lower()
+        if "%" in ml0 or all(float(c.mass.max()) < 200 for c in curves):
+            y_label = "TG / %"
+        else:
+            y_label = curves[0].mass_label
+
+    for i, c in enumerate(curves):
+        color = palette[i]
+        lab = c.source_name or f"series_{i + 1}"
+        ax.plot(c.temperature_c, c.mass, color=color, lw=1.2, label=lab)
+
+    t_all = np.concatenate([c.temperature_c for c in curves])
+    m_all = np.concatenate([c.mass for c in curves])
+    t_min, t_max = float(np.min(t_all)), float(np.max(t_all))
+    m_min, m_max = float(np.min(m_all)), float(np.max(m_all))
+    pad_y = max((m_max - m_min) * 0.08, 1.0)
+    ax.set_xlim(t_min, t_max)
+    ax.set_ylim(m_min - pad_y, m_max + pad_y)
+
+    x_span = max(t_max - t_min, 1.0)
+    bracket_half = 0.018 * x_span
+
+    for wi, win in enumerate(windows):
+        lo = float(win["temp_min_c"])
+        hi = float(win["temp_max_c"])
+        if hi < t_min or lo > t_max:
+            continue
+        lo_c = max(lo, t_min)
+        hi_c = min(hi, t_max)
+        t_mid = (lo_c + hi_c) / 2.0
+
+        for ci, c in enumerate(curves):
+            color = palette[ci]
+            m_lo = tga_mass_at_temp(c.temperature_c, c.mass, lo_c)
+            m_hi = tga_mass_at_temp(c.temperature_c, c.mass, hi_c)
+            delta = m_hi - m_lo
+            dx = (ci - 0.5 * (len(curves) - 1)) * bracket_half * 0.9
+            tm = t_mid + dx
+
+            ax.plot([tm - bracket_half, tm], [m_lo, m_lo], color=color, lw=1.0, zorder=4)
+            ax.plot([tm - bracket_half, tm], [m_hi, m_hi], color=color, lw=1.0, zorder=4)
+            ax.annotate(
+                "",
+                xy=(tm, m_hi),
+                xytext=(tm, m_lo),
+                arrowprops={
+                    "arrowstyle": "<->",
+                    "color": color,
+                    "lw": 1.0,
+                    "shrinkA": 0,
+                    "shrinkB": 0,
+                },
+                zorder=5,
+            )
+            tx = tm + bracket_half * 1.1 + wi * bracket_half * 0.15
+            ax.text(
+                tx,
+                (m_lo + m_hi) / 2.0,
+                f"Mass change: {delta:+.2f} %",
+                color=color,
+                fontsize=7.5,
+                va="center",
+                ha="left",
+                zorder=6,
+            )
+
+    for ci, c in enumerate(curves):
+        color = palette[ci]
+        t_last = float(c.temperature_c[-1])
+        m_last = float(c.mass[-1])
+        ax.plot([t_last], [m_last], marker="+", ms=9, mew=1.2, color=color, zorder=7)
+        ax.annotate(
+            f"Residual mass: {m_last:.2f} % ({t_last:.1f} °C)",
+            xy=(t_last, m_last),
+            xytext=(12, 10 + ci * 14),
+            textcoords="offset points",
+            fontsize=7.5,
+            color=color,
+            ha="left",
+        )
+
+    ax.set_title(title or "Thermogravimetric analysis (TG)")
+    ax.set_xlabel("Temperature / °C")
+    ax.set_ylabel(y_label)
+    ax.grid(True, alpha=0.35, linestyle="-", linewidth=0.5)
+    if len(curves) > 1:
+        ax.legend(loc="best", fontsize=8, framealpha=0.9)
     fig.tight_layout()
     return fig
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 from typing import BinaryIO
 
 import numpy as np
@@ -9,6 +10,44 @@ import pandas as pd
 
 from soil_analytics.parsers._io import normalize_column, read_csv_flexible
 from soil_analytics.schemas import TGACurve
+
+
+def _read_tga_dataframe_netzsch(raw: bytes) -> pd.DataFrame:
+    """
+    NETZSCH / Proteus-style ASCII: metadata lines starting with '#', then a
+    '##Temp...' header row followed by comma-separated numeric data.
+    """
+    text = raw.decode("utf-8", errors="replace")
+    lines = text.splitlines()
+    header_idx: int | None = None
+    header_line: str | None = None
+    for i, line in enumerate(lines):
+        stripped = line.strip().lstrip("#").strip()
+        if not stripped or stripped.lower().startswith("exporttype"):
+            continue
+        low = stripped.lower()
+        if "temp" in low and ("mass" in low or "/mg" in low or "tg" in low):
+            header_idx = i
+            header_line = stripped
+            break
+    if header_idx is None or header_line is None:
+        raise ValueError("Could not find TGA table header (temperature + mass columns).")
+
+    block = [header_line]
+    for line in lines[header_idx + 1 :]:
+        sl = line.strip()
+        if not sl or sl.startswith("#"):
+            continue
+        parts = [p.strip() for p in sl.split(",")]
+        if len(parts) < 2:
+            continue
+        try:
+            float(parts[0].replace(",", "."))
+        except ValueError:
+            break
+        block.append(sl)
+
+    return pd.read_csv(io.StringIO("\n".join(block)), sep=",", engine="python")
 
 
 def _find_temp_column(columns: list[str]) -> str | None:
@@ -45,7 +84,27 @@ def parse_tga_csv(
     source_name: str | None = None,
     include_dtg: bool = True,
 ) -> TGACurve:
-    df = read_csv_flexible(raw)
+    bio: bytes
+    if isinstance(raw, bytes):
+        bio = raw
+    else:
+        pos = raw.tell()
+        bio = raw.read()
+        raw.seek(pos)
+
+    df: pd.DataFrame
+    try:
+        cand = read_csv_flexible(bio)
+        cand.columns = [normalize_column(str(c)) for c in cand.columns]
+        cols = list(cand.columns)
+        tc = _find_temp_column(cols)
+        mc = _find_mass_column(cols, tc) if tc else None
+        if tc is None or mc is None:
+            raise ValueError("missing TGA columns in generic CSV")
+        df = cand
+    except Exception:
+        df = _read_tga_dataframe_netzsch(bio)
+
     df.columns = [normalize_column(str(c)) for c in df.columns]
     columns = list(df.columns)
 

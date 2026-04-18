@@ -3,8 +3,15 @@
 from pathlib import Path
 
 import numpy as np
+import pytest
 
-from soil_analytics.parsers import parse_ftir_csv, parse_tga_csv, parse_xrd_asc, parse_xrd_bytes, parse_xrd_csv
+from soil_analytics.parsers import (
+    parse_ftir_csv,
+    parse_tga_csv,
+    parse_xrd_asc,
+    parse_xrd_bytes,
+    parse_xrd_csv,
+)
 
 FIX = Path(__file__).parent / "fixtures"
 
@@ -59,3 +66,11 @@ def test_parse_tga() -> None:
     c = parse_tga_csv(raw)
     assert c.dtg is not None
     assert len(c.temperature_c) == len(c.mass)
+
+
+def test_parse_tga_netzsch_ascii() -> None:
+    raw = (FIX / "netzsch_tg_export.csv").read_bytes()
+    c = parse_tga_csv(raw, source_name="netzsch_tg_export.csv", include_dtg=False)
+    assert len(c.temperature_c) == 5
+    assert float(c.temperature_c[0]) == pytest.approx(28.92)
+    assert float(c.mass[0]) == pytest.approx(100.0)
