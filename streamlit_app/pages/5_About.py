@@ -18,6 +18,7 @@ st.markdown(
 
 - **Supervised** models are trained on **your** labeled images under `data/fesem_supervised/` (PyTorch ImageFolder: one subfolder per class). Treat outputs as **assistive** until validated on your instrument and samples.
 - **Unsupervised** clustering and anomaly scores help prioritize images for expert review; they are not ground truth labels.
+- Qualitative **phase morphology** notes (not automated labels) are in `config/reference_ranges/fesem_remarks.yaml` and summarized on the FESEM page.
 - FESEM requires the optional ML stack: `pip install soil-analytics[ml]`
 
 ### Running locally

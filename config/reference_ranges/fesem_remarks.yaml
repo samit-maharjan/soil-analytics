@@ -1,0 +1,45 @@
+# FESEM qualitative reference — typical morphologies and remarks for phases in cementitious / carbonated systems.
+# For expert interpretation alongside imaging conditions (accelerating voltage, coating, etc.).
+version: "0.1"
+phases:
+  - id: aragonite
+    label: "Aragonite"
+    chemical_formula: "CaCO₃"
+    morphology: "Needle-like, fibrous, radiating clusters"
+    notes: "Metastable polymorph formed during early carbonation."
+
+  - id: vaterite
+    label: "Vaterite"
+    chemical_formula: "CaCO₃"
+    morphology: "Spherical, globular, cauliflower-like clusters"
+    notes: "Least stable polymorph; tends to transform toward calcite."
+
+  - id: portlandite
+    label: "Portlandite"
+    chemical_formula: "Ca(OH)₂"
+    morphology: "Hexagonal plate-like, layered or flaky crystals"
+    notes: "Product of lime hydration."
+
+  - id: calcite
+    label: "Calcite"
+    chemical_formula: "CaCO₃"
+    morphology: "Rhombohedral, blocky or angular crystals"
+    notes: "Most stable polymorph; often dominant at later carbonation stages."
+
+  - id: csh
+    label: "C–S–H (calcium silicate hydrate)"
+    chemical_formula: null
+    morphology: "Gel-like, fibrous or amorphous mass"
+    notes: "No fixed stoichiometry; principal binding phase and strength contributor in Portland systems."
+
+  - id: ettringite
+    label: "Ettringite"
+    chemical_formula: "Ca₆Al₂(SO₄)₃(OH)₁₂·26H₂O"
+    morphology: "Needle-like, slender crystals in bundles"
+    notes: "Favored when alumina and sulfate are available; classic AFt phase."
+
+  - id: acc
+    label: "ACC (amorphous calcium carbonate)"
+    chemical_formula: "CaCO₃"
+    morphology: "Irregular, shapeless, non-crystalline mass"
+    notes: "Precursor to crystalline CaCO₃ polymorphs."

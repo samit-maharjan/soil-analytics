@@ -7,15 +7,39 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
+import yaml
 
-from soil_analytics.paths import fesem_supervised_data_dir, models_dir, project_root
+from soil_analytics.paths import fesem_supervised_data_dir, models_dir, project_root, reference_config_dir
 
 st.set_page_config(page_title="FESEM", layout="wide")
 st.title("FESEM")
 st.caption(
-    "Supervised: load a model trained with scripts/train_fesem_supervised.py. "
-    "Unsupervised: embeddings with a pretrained backbone (no labels required)."
+    "Phase morphology table below uses only config YAML. "
+    "Supervised / unsupervised tabs need `pip install soil-analytics[ml]`: load a trained model or run clustering on uploads."
 )
+
+_remarks_path = reference_config_dir() / "fesem_remarks.yaml"
+if _remarks_path.is_file():
+    with open(_remarks_path, encoding="utf-8") as f:
+        _fesem_ref = yaml.safe_load(f) or {}
+    _rows = _fesem_ref.get("phases", [])
+    if _rows:
+        with st.expander("Phase morphology reference (from config/reference_ranges/fesem_remarks.yaml)", expanded=False):
+            st.dataframe(
+                pd.DataFrame(
+                    [
+                        {
+                            "Phase": r.get("label", r.get("id", "")),
+                            "Formula": r.get("chemical_formula") or "—",
+                            "Morphology": r.get("morphology", ""),
+                            "Notes": r.get("notes", ""),
+                        }
+                        for r in _rows
+                    ]
+                ),
+                use_container_width=True,
+                hide_index=True,
+            )
 
 try:
     from soil_analytics.ml.supervised import predict_images_from_bytes

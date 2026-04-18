@@ -12,3 +12,8 @@ def test_fesem_supervised_data_dir() -> None:
     d = fesem_supervised_data_dir()
     assert d.name == "fesem_supervised"
     assert d.parent.name == "data"
+
+
+def test_fesem_remarks_config_exists() -> None:
+    cfg = reference_config_dir() / "fesem_remarks.yaml"
+    assert cfg.is_file(), f"Expected {cfg}"
