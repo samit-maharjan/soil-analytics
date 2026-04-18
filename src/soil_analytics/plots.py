@@ -11,13 +11,24 @@ from matplotlib.figure import Figure
 from soil_analytics.schemas import FTIRSeries, TGACurve, XRDPattern
 
 
-def plot_ftir(series: FTIRSeries) -> Figure:
-    fig, ax = plt.subplots(figsize=(9, 4.5))
-    ax.plot(series.wavenumber_cm1, series.y, color="C0", lw=1.2)
-    ax.set_title("FTIR")
+def plot_ftir(series: FTIRSeries, title: str | None = None) -> Figure:
+    """Spectrum plot: decreasing wavenumber left-to-right (typical MIR convention)."""
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(series.wavenumber_cm1, series.y, color="#1f77b4", lw=1.0)
+    ax.set_title(title or (series.source_name or "FTIR spectrum"))
     ax.set_xlabel("Wavenumber (cm⁻¹)")
-    ax.set_ylabel(series.y_label)
+    if series.y_label == "transmittance":
+        yl = "Transmittance (%T)" if float(series.y.max()) > 1.5 else "Transmittance"
+    elif series.y_label == "absorbance":
+        yl = "Absorbance"
+    elif series.y_label == "reflectance":
+        yl = "Reflectance"
+    else:
+        yl = series.y_label.capitalize()
+    ax.set_ylabel(yl)
     ax.invert_xaxis()
+    ax.grid(True, alpha=0.35, linestyle="-", linewidth=0.5)
+    ax.set_xlim(float(series.wavenumber_cm1.max()), float(series.wavenumber_cm1.min()))
     fig.tight_layout()
     return fig
 

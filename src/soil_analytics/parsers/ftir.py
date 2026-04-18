@@ -1,14 +1,83 @@
-"""FTIR CSV parser."""
+"""FTIR parsers: CSV and JCAMP-style text (e.g. ##DATA TYPE=INFRARED SPECTRUM)."""
 
 from __future__ import annotations
 
-from typing import BinaryIO
+import io
+import re
+from typing import BinaryIO, Literal, cast
 
 import numpy as np
 import pandas as pd
 
 from soil_analytics.parsers._io import normalize_column, read_csv_flexible
 from soil_analytics.schemas import FTIRSeries
+
+_YLabel = Literal["absorbance", "transmittance", "reflectance", "unknown"]
+
+
+def _raw_to_bytes(raw: bytes | BinaryIO) -> bytes:
+    if isinstance(raw, bytes):
+        return raw
+    return raw.read()
+
+
+def parse_ftir_jcamp(raw: bytes | BinaryIO, source_name: str | None = None) -> FTIRSeries:
+    """
+    Parse JCAMP-DX style IR text: header lines starting with ##, then ``wavenumber<TAB>y`` pairs.
+    Recognizes ``##YUNITS=%T`` / ABSORBANCE-style hints for the y axis.
+    """
+    data = _raw_to_bytes(raw)
+    text = data.decode("utf-8", errors="replace")
+    y_label: str = "unknown"
+    rows: list[tuple[float, float]] = []
+
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("##"):
+            ul = line.upper()
+            if "YUNITS" in ul:
+                if "%T" in line or "TRANSMITTANCE" in ul:
+                    y_label = "transmittance"
+                elif "ABS" in ul:
+                    y_label = "absorbance"
+                elif "REFLECT" in ul:
+                    y_label = "reflectance"
+            continue
+        parts = re.split(r"[\s,]+", line.strip())
+        if len(parts) < 2:
+            continue
+        try:
+            wn = float(parts[0])
+            y = float(parts[1])
+        except ValueError:
+            continue
+        rows.append((wn, y))
+
+    if not rows:
+        raise ValueError("No numeric wavenumber / y pairs found (expected JCAMP IR or two-column text).")
+
+    arr = np.array(rows, dtype=float)
+    wn = arr[:, 0]
+    y = arr[:, 1]
+    order = np.argsort(wn)
+    wn = wn[order]
+    y = y[order]
+
+    if y_label == "unknown":
+        mx, mn = float(np.nanmax(y)), float(np.nanmin(y))
+        if mn >= -0.05 and mx <= 105.0:
+            y_label = "transmittance"
+        elif mn >= -0.05 and mx <= 5.0 and np.nanmean(y) < 3:
+            y_label = "absorbance"
+
+    return FTIRSeries(
+        wavenumber_cm1=wn,
+        y=y,
+        y_label=cast(_YLabel, y_label),
+        source_name=source_name,
+    )
 
 
 def _find_wavenumber_column(columns: list[str]) -> str | None:
@@ -33,8 +102,20 @@ def _find_y_column(columns: list[str], wn: str) -> str | None:
     return others[0] if others else None
 
 
+def _looks_like_jcamp_ir(raw: bytes) -> bool:
+    head = raw[:16384].lstrip()
+    if head.startswith(b"##"):
+        return True
+    return b"##DATA TYPE=INFRARED" in raw[: min(len(raw), 32768)]
+
+
 def parse_ftir_csv(raw: bytes | BinaryIO, source_name: str | None = None) -> FTIRSeries:
-    df = read_csv_flexible(raw)
+    data = _raw_to_bytes(raw)
+    if _looks_like_jcamp_ir(data):
+        return parse_ftir_jcamp(data, source_name=source_name)
+
+    bio = io.BytesIO(data)
+    df = read_csv_flexible(bio)
     df.columns = [normalize_column(str(c)) for c in df.columns]
     columns = list(df.columns)
 
@@ -75,6 +156,6 @@ def parse_ftir_csv(raw: bytes | BinaryIO, source_name: str | None = None) -> FTI
     return FTIRSeries(
         wavenumber_cm1=wn,
         y=y,
-        y_label=y_label,
+        y_label=cast(_YLabel, y_label),
         source_name=source_name,
     )

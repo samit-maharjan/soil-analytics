@@ -9,14 +9,17 @@ import streamlit as st
 from soil_analytics.parsers import parse_ftir_csv
 from soil_analytics.paths import reference_config_dir
 from soil_analytics.plots import figure_to_embed_html, plot_ftir
-from soil_analytics.reference_checks import check_ftir
+from soil_analytics.reference_checks import check_ftir, ftir_inference_rows
 from soil_analytics.report import build_html_report
 
 st.set_page_config(page_title="FTIR", layout="wide")
 st.title("FTIR")
-st.caption("Upload a CSV with wavenumber (cm⁻¹) and absorbance or transmittance columns.")
+st.caption(
+    "Upload a **CSV** (wavenumber + absorbance or transmittance columns) or a **JCAMP-style text** file "
+    "(e.g. `##DATA TYPE=INFRARED SPECTRUM`, `##YUNITS=%T`, then wavenumber and transmittance columns)."
+)
 
-up = st.file_uploader("FTIR CSV", type=["csv", "txt"], key="ftir_csv")
+up = st.file_uploader("FTIR file (CSV or JCAMP / text spectrum)", type=["csv", "txt"], key="ftir_csv")
 if up is None:
     st.info("Upload a file to begin.")
     st.stop()
@@ -27,18 +30,28 @@ except Exception as e:
     st.error(f"Could not parse file: {e}")
     st.stop()
 
-fig = plot_ftir(series)
+fig = plot_ftir(series, title=up.name)
 plot_html = figure_to_embed_html(fig)
 st.pyplot(fig)
 plt.close(fig)
 
 cfg = reference_config_dir() / "ftir_bands.yaml"
 results = check_ftir(series, config_path=cfg)
-df = pd.DataFrame(
+inference_rows = ftir_inference_rows(results)
+inf_df = pd.DataFrame(inference_rows)
+
+st.subheader("Band inferences (reference ranges)")
+st.markdown(
+    "Peak wavenumbers are extrema within each band window (minimum transmittance / maximum absorbance). "
+    "Inferences follow the `notes` field in `config/reference_ranges/ftir_bands.yaml`."
+)
+st.dataframe(inf_df, use_container_width=True, hide_index=True)
+
+st.subheader("Reference check status")
+qc_df = pd.DataFrame(
     [{"id": r.check_id, "label": r.label, "status": r.status, "message": r.message} for r in results]
 )
-st.subheader("Reference checks")
-st.dataframe(df, use_container_width=True)
+st.dataframe(qc_df, use_container_width=True)
 
 html = build_html_report(
     "FTIR report",
@@ -50,6 +63,7 @@ html = build_html_report(
         )
     ],
     figure_html=plot_html,
+    inference_rows=inference_rows,
 )
 st.download_button(
     "Download HTML report",

@@ -17,6 +17,21 @@ def test_parse_ftir() -> None:
     assert np.all(np.diff(s.wavenumber_cm1) >= 0)
 
 
+def test_parse_ftir_jcamp() -> None:
+    raw = b"""##TITLE=Test
+##DATA TYPE=INFRARED SPECTRUM
+##XUNITS=1/CM
+##YUNITS=%T
+1000.0\t50.0
+2000.0\t60.0
+3000.0\t70.0
+"""
+    s = parse_ftir_csv(raw, source_name="jcamp")
+    assert s.y_label == "transmittance"
+    assert len(s.wavenumber_cm1) == 3
+    assert np.allclose(s.wavenumber_cm1, [1000.0, 2000.0, 3000.0])
+
+
 def test_parse_xrd() -> None:
     raw = (FIX / "sample_xrd.csv").read_bytes()
     p = parse_xrd_csv(raw)

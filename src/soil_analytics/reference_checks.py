@@ -84,6 +84,29 @@ def check_ftir(
     return results
 
 
+def ftir_inference_rows(results: list[CheckResult]) -> list[dict[str, str]]:
+    """
+    Turn FTIR band check results into rows for a band table: peak wavenumber and qualitative inference.
+    Inference text comes from YAML ``notes`` when present; otherwise the check message.
+    """
+    rows: list[dict[str, str]] = []
+    for r in results:
+        ev = r.evidence or {}
+        peak = ev.get("peak_wavenumber_cm1")
+        notes = (ev.get("notes") or "").strip()
+        wn_str = f"{float(peak):.1f}" if peak is not None else "—"
+        inference = notes if notes else r.message
+        rows.append(
+            {
+                "Band": r.label,
+                "Peak wavenumber (cm⁻¹)": wn_str,
+                "Inference": inference,
+                "Status": r.status,
+            }
+        )
+    return rows
+
+
 def check_xrd(
     pattern: XRDPattern,
     config_path: Path | None = None,
