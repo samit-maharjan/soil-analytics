@@ -17,7 +17,17 @@ data/fesem_supervised/
 
 ## B. Flat folder + CSV manifest
 
-Keep images under a folder (e.g. `supervised/`) and list **path** and **label** in a CSV. Example: `scripts/fesem_labels.example.csv` includes all `supervised/1.png`–`11.png` rows for reference; **edit every label to match your microscopy** (the example alternation is only a template, not ground truth).
+Keep images under a folder (e.g. `supervised/`) and list **path** and **label** in a CSV. Example: `scripts/fesem_labels.example.csv` lists all `supervised/1.png`–`11.png` with **seven** phase names (Aragonite, Vaterite, Portlandite, Calcite, CSH, Ettringite, ACC) in a round-robin — **you must correct each row** to the true phase for that micrograph. The model can only predict classes that appear in the manifest; more classes need more (or relabeled) images.
+
+**Regenerate a round-robin draft** from `config/reference_ranges/fesem_remarks.yaml` and whatever files are in `supervised/`:
+
+```text
+python scripts/generate_fesem_manifest.py --out scripts/my_fesem_labels.csv
+```
+
+Then edit `my_fesem_labels.csv` and train with `--manifest scripts/my_fesem_labels.csv`.
+
+For many classes and only a few images per class, consider a larger backbone, e.g. `--backbone efficientnet_b0` (first run may download weights).
 
 ```text
 data/fesem_supervised/
@@ -29,7 +39,7 @@ data/fesem_supervised/
 
 Requirements:
 
-- **At least two classes** and **at least two images** total (train/validation split).
+- **At least two classes** in the label column and **at least two images** total (train/validation split). You can have as many classes as you have distinct `label` values (e.g. all cement / CaCO₃–related phases you care about), as long as the split still leaves at least one image in train and one in val.
 - Supported extensions follow `torchvision.datasets.ImageFolder` defaults (e.g. `.png`, `.jpg`, `.jpeg`, `.tif`, `.tiff`, `.bmp`).
 
 Train from the repository root (defaults use this folder):

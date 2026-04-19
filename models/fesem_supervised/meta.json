@@ -9,8 +9,20 @@
     "Calcite": 1
   },
   "img_size": 224,
-  "epochs": 15,
-  "best_val_loss": 0.8280953764915466,
+  "epochs": 35,
+  "epochs_run": 35,
+  "best_val_accuracy": 1.0,
+  "best_val_loss": 0.35343295335769653,
   "crop_bottom_fraction": 0.08,
-  "manifest": "/Users/samit.maharjan/Personal/Research/soil-analytics/scripts/fesem_labels.example.csv"
+  "manifest": "/Users/samit.maharjan/Personal/Research/soil-analytics/scripts/fesem_labels.example.csv",
+  "training": {
+    "strong_augment": true,
+    "label_smoothing": 0.08,
+    "val_fraction": 0.2,
+    "stratified_split": true,
+    "balance_sampler": false,
+    "patience": 14,
+    "early_stopped": false,
+    "train_sample_duplicates": 10
+  }
 }

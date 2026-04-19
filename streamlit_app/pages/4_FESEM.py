@@ -85,10 +85,12 @@ with tab_sup:
     )
     meta_path = model_path / "meta.json"
     crop_note = ""
+    trained_classes: list[str] = []
     if meta_path.is_file():
         try:
             with open(meta_path, encoding="utf-8") as f:
                 _m = json.load(f)
+            trained_classes = list(_m.get("classes") or [])
             c = float(_m.get("crop_bottom_fraction") or 0.0)
             if c > 0:
                 crop_note = (
@@ -100,6 +102,11 @@ with tab_sup:
     if not meta_path.exists():
         st.warning(
             "No trained model found (missing meta.json). Train a model or set the path above."
+        )
+    elif trained_classes:
+        st.caption(
+            f"This checkpoint has **{len(trained_classes)}** output classes: "
+            f"{', '.join(trained_classes)}. Retrain with an updated manifest to add phases."
         )
     if crop_note:
         st.info(
