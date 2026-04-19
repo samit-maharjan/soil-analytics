@@ -125,6 +125,11 @@ with tab_sup:
         key="fesem_hm_alpha",
     )
     blend_hm = overlay_style and heatmap_alpha > 1e-6
+    tta_infer = st.checkbox(
+        "Stabilize scores (TTA: average with mirror view — more consistent on the same image)",
+        value=True,
+        key="fesem_tta",
+    )
     up_sup = st.file_uploader(
         "FESEM images",
         type=["png", "jpg", "jpeg", "tif", "tiff"],
@@ -141,9 +146,10 @@ with tab_sup:
                         model_path,
                         blend_heatmap=blend_hm,
                         heatmap_alpha=heatmap_alpha,
+                        tta=tta_infer,
                     )
                 else:
-                    preds = predict_images_from_bytes(files, model_path)
+                    preds = predict_images_from_bytes(files, model_path, tta=tta_infer)
             df = pd.DataFrame(
                 [{k: v for k, v in r.items() if k != "annotated_png"} for r in preds]
             )

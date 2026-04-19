@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -12,8 +13,9 @@ import numpy as np
 import timm
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from PIL import Image
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
 from torchvision import datasets, transforms
 from tqdm import tqdm
 
@@ -46,6 +48,8 @@ def _build_transforms(
     crop_bottom_fraction: float = 0.0,
     train: bool = False,
     augment: bool = True,
+    strong_augment: bool = False,
+    random_erasing_p: float = 0.12,
 ) -> transforms.Compose:
     crop = []
     if crop_bottom_fraction > 0:
@@ -56,16 +60,117 @@ def _build_transforms(
         geo.extend(
             [
                 transforms.RandomHorizontalFlip(p=0.5),
-                transforms.RandomRotation(degrees=12),
+                transforms.RandomVerticalFlip(p=0.35),
+                transforms.RandomRotation(degrees=18),
             ]
         )
+        if strong_augment:
+            geo.extend(
+                [
+                    transforms.RandomAffine(
+                        degrees=0,
+                        translate=(0.06, 0.08),
+                        scale=(0.84, 1.14),
+                        shear=(-5, 5),
+                    ),
+                    transforms.ColorJitter(brightness=0.35, contrast=0.35, saturation=0.12),
+                    transforms.RandomApply(
+                        [
+                            transforms.GaussianBlur(kernel_size=3, sigma=(0.15, 1.1)),
+                        ],
+                        p=0.28,
+                    ),
+                ]
+            )
 
-    tail = [
+    tail: list[Any] = [
         transforms.Resize((img_size, img_size)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ]
+    if train and augment and strong_augment and random_erasing_p > 0:
+        tail.append(transforms.RandomErasing(p=random_erasing_p, scale=(0.02, 0.12), ratio=(0.5, 2.0)))
+
     return transforms.Compose([*crop, *geo, *tail])
+
+
+def _train_val_indices_stratified(targets: list[int], val_fraction: float, seed: int) -> tuple[list[int], list[int]]:
+    """Stratified split when possible; otherwise random shuffle split."""
+    n = len(targets)
+    if n < 2:
+        raise ValueError("Need at least 2 samples for train/val split.")
+    idx = np.arange(n, dtype=np.int64)
+    y = np.array(targets, dtype=np.int64)
+    n_val = max(1, int(round(val_fraction * n)))
+    n_val = min(n_val, n - 1)
+
+    counts = Counter(targets)
+    min_per_class = min(counts.values()) if counts else 0
+    use_stratify = min_per_class >= 2 and len(counts) >= 2
+
+    if use_stratify:
+        try:
+            from sklearn.model_selection import train_test_split
+
+            train_idx, val_idx = train_test_split(
+                idx,
+                test_size=n_val / n,
+                stratify=y,
+                random_state=seed,
+                shuffle=True,
+            )
+            return train_idx.tolist(), val_idx.tolist()
+        except ValueError:
+            pass
+
+    rng = np.random.default_rng(seed)
+    perm = rng.permutation(n).tolist()
+    val_idx = perm[:n_val]
+    train_idx = perm[n_val:]
+    return train_idx, val_idx
+
+
+def _pairs_from_indices(
+    samples: list[tuple[Path, int]], train_idx: list[int], val_idx: list[int]
+) -> tuple[list[tuple[Path, int]], list[tuple[Path, int]]]:
+    train_pairs = [samples[i] for i in train_idx]
+    val_pairs = [samples[i] for i in val_idx]
+    return train_pairs, val_pairs
+
+
+def _expand_train_duplicates(
+    train_pairs: list[tuple[Path, int]], duplicates: int
+) -> list[tuple[Path, int]]:
+    if duplicates < 1:
+        raise ValueError("train_sample_duplicates must be >= 1.")
+    if duplicates == 1:
+        return train_pairs
+    return [p for p in train_pairs for _ in range(duplicates)]
+
+
+def _probabilities_for_pil(
+    pil_img: Image.Image,
+    model: nn.Module,
+    tfm: transforms.Compose,
+    device: torch.device,
+    *,
+    tta: bool,
+) -> np.ndarray:
+    """
+    Class probabilities; if ``tta`` is True, average logits with a horizontal flip
+    (stabler, more repeatable scores on the same micrograph).
+    """
+    x0 = tfm(pil_img).unsqueeze(0).to(device)
+    model.eval()
+    with torch.no_grad():
+        l0 = model(x0)
+        if not tta:
+            prob = torch.softmax(l0, dim=1)
+        else:
+            xf = torch.flip(x0, dims=[3])
+            lf = model(xf)
+            prob = torch.softmax((l0 + lf) * 0.5, dim=1)
+    return prob.cpu().numpy().ravel()
 
 
 def _read_manifest_rows(manifest_path: Path) -> list[tuple[str, str]]:
@@ -145,18 +250,34 @@ def train_supervised(
     out_dir: Path | str,
     backbone: str = "resnet18",
     img_size: int = 224,
-    epochs: int = 15,
-    batch_size: int = 16,
+    epochs: int = 35,
+    batch_size: int = 8,
     lr: float = 1e-4,
     manifest: Path | str | None = None,
     crop_bottom_fraction: float = 0.0,
     augment: bool = True,
+    strong_augment: bool = True,
+    val_fraction: float = 0.2,
+    stratified_split: bool = True,
+    label_smoothing: float = 0.08,
+    balance_sampler: bool = True,
+    patience: int = 14,
+    split_seed: int = 42,
+    random_erasing_p: float = 0.12,
+    train_sample_duplicates: int = 1,
 ) -> dict[str, Any]:
     """
     Train a classifier on either:
 
     - PyTorch ImageFolder layout: ``data_dir/class_name/*.png``
     - Or a CSV manifest (``path,label`` columns) with image paths relative to ``data_dir``.
+
+    Uses stratified train/val split when possible, stronger augmentations for small FESEM sets,
+    label smoothing, cosine LR decay, checkpoint by validation accuracy, and optional early stopping.
+
+    Set ``train_sample_duplicates`` > 1 to list each training image that many times per epoch
+    (more gradient steps on the same labeled files, like training the same data multiple times
+    per pass through the dataset).
 
     Saves model.pth, meta.json.
     """
@@ -168,6 +289,9 @@ def train_supervised(
     classes: list[str]
     train_ds: Dataset[tuple[torch.Tensor, int]]
     val_ds: Dataset[tuple[torch.Tensor, int]]
+
+    use_stratify = stratified_split
+    eff_strong = strong_augment if augment else False
 
     if manifest is not None:
         manifest_path = Path(manifest)
@@ -181,27 +305,40 @@ def train_supervised(
             raise ValueError(
                 "Need at least 2 manifest rows for supervised training with a validation split."
             )
-        n_val = max(1, int(0.15 * n))
-        g = torch.Generator().manual_seed(42)
-        perm = torch.randperm(n, generator=g).tolist()
-        val_idx = set(perm[:n_val])
-        train_pairs = [samples[i] for i in range(n) if i not in val_idx]
-        val_pairs = [samples[i] for i in range(n) if i in val_idx]
+        targets = [t for _, t in samples]
+        if use_stratify:
+            train_ix, val_ix = _train_val_indices_stratified(targets, val_fraction, split_seed)
+        else:
+            rng = np.random.default_rng(split_seed)
+            perm = rng.permutation(n).tolist()
+            n_val = max(1, int(round(val_fraction * n)))
+            n_val = min(n_val, n - 1)
+            val_ix = perm[:n_val]
+            train_ix = perm[n_val:]
+        train_pairs, val_pairs = _pairs_from_indices(samples, train_ix, val_ix)
 
         train_tfm = _build_transforms(
             img_size,
             crop_bottom_fraction=crop_bottom_fraction,
             train=True,
             augment=augment,
+            strong_augment=eff_strong,
+            random_erasing_p=random_erasing_p,
         )
         val_tfm = _build_transforms(
-            img_size, crop_bottom_fraction=crop_bottom_fraction, train=False, augment=False
+            img_size,
+            crop_bottom_fraction=crop_bottom_fraction,
+            train=False,
+            augment=False,
+            strong_augment=False,
+            random_erasing_p=0.0,
         )
         if len(train_pairs) < 1 or len(val_pairs) < 1:
             raise ValueError(
                 "Train/val split produced an empty split; "
                 "add more labeled images or adjust the manifest."
             )
+        train_pairs = _expand_train_duplicates(train_pairs, train_sample_duplicates)
         train_ds = _ManifestDataset(data_dir, train_pairs, train_tfm)
         val_ds = _ManifestDataset(data_dir, val_pairs, val_tfm)
     else:
@@ -210,9 +347,16 @@ def train_supervised(
             crop_bottom_fraction=crop_bottom_fraction,
             train=True,
             augment=augment,
+            strong_augment=eff_strong,
+            random_erasing_p=random_erasing_p,
         )
         val_tfm = _build_transforms(
-            img_size, crop_bottom_fraction=crop_bottom_fraction, train=False, augment=False
+            img_size,
+            crop_bottom_fraction=crop_bottom_fraction,
+            train=False,
+            augment=False,
+            strong_augment=False,
+            random_erasing_p=0.0,
         )
         ds = datasets.ImageFolder(str(data_dir), transform=val_tfm)
         if len(ds.classes) < 2:
@@ -223,49 +367,68 @@ def train_supervised(
             raise ValueError(
                 "Need at least 2 images total for supervised training with a validation split."
             )
-        n_val = max(1, int(0.15 * n))
-        g = torch.Generator().manual_seed(42)
-        perm = torch.randperm(n, generator=g).tolist()
-        val_idx = set(perm[:n_val])
-        train_idx = [i for i in range(n) if i not in val_idx]
-        val_indices = list(val_idx)
-
-        # Build train subset with augmentation by wrapping samples (reload from disk).
-        train_samples: list[tuple[Path, int]] = []
-        for i in train_idx:
-            path, target = ds.samples[i]
-            train_samples.append((Path(path), target))
-        val_samples = [ds.samples[i] for i in val_indices]
-        train_ds = _ManifestDataset(
-            data_dir,
-            [(Path(p), t) for p, t in train_samples],
-            train_tfm,
-        )
-        val_ds = _ManifestDataset(
-            data_dir,
-            [(Path(p), t) for p, t in val_samples],
-            val_tfm,
-        )
+        samples = [(Path(ds.samples[i][0]), ds.samples[i][1]) for i in range(n)]
+        targets = [t for _, t in samples]
+        if use_stratify:
+            train_ix, val_ix = _train_val_indices_stratified(targets, val_fraction, split_seed)
+        else:
+            rng = np.random.default_rng(split_seed)
+            perm = rng.permutation(n).tolist()
+            n_val = max(1, int(round(val_fraction * n)))
+            n_val = min(n_val, n - 1)
+            val_ix = perm[:n_val]
+            train_ix = perm[n_val:]
+        train_pairs, val_pairs = _pairs_from_indices(samples, train_ix, val_ix)
+        train_pairs = _expand_train_duplicates(train_pairs, train_sample_duplicates)
+        train_ds = _ManifestDataset(data_dir, train_pairs, train_tfm)
+        val_ds = _ManifestDataset(data_dir, val_pairs, val_tfm)
         if len(train_ds) < 1 or len(val_ds) < 1:
             raise ValueError(
                 "Train/val split produced an empty split; "
                 "add more images per class or consolidate classes."
             )
 
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=0)
+    train_targets = [t for _, t in train_pairs]
+    cnt = Counter(train_targets)
+    use_balance = balance_sampler and len(cnt) >= 2
+    if use_balance:
+        mx = max(cnt.values())
+        mn = min(cnt.values())
+        if mn <= 0 or mx / mn < 1.35:
+            use_balance = False
+
+    if use_balance:
+        class_weight = {c: 1.0 / cnt[c] for c in cnt}
+        w_tensor = torch.DoubleTensor([class_weight[t] for t in train_targets])
+        sampler = WeightedRandomSampler(
+            weights=w_tensor, num_samples=len(train_targets), replacement=True
+        )
+        train_loader = DataLoader(
+            train_ds, batch_size=batch_size, sampler=sampler, num_workers=0
+        )
+    else:
+        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=0)
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=0)
 
     model = timm.create_model(backbone, pretrained=True, num_classes=len(classes))
     model = model.to(device)
-    opt = torch.optim.AdamW(model.parameters(), lr=lr)
-    loss_fn = nn.CrossEntropyLoss()
+    opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.02)
+    ls = float(np.clip(label_smoothing, 0.0, 0.35))
+    loss_fn = nn.CrossEntropyLoss(label_smoothing=ls)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        opt, T_max=max(1, epochs), eta_min=lr * 0.02
+    )
 
-    best_val = float("inf")
+    best_val_acc = -1.0
+    best_val_loss = float("inf")
     best_state = None
+    stalled = 0
+    epoch_ran = 0
 
     for epoch in range(epochs):
+        epoch_ran = epoch + 1
         model.train()
-        for x, y in tqdm(train_loader, desc=f"epoch {epoch+1}/{epochs}"):
+        for x, y in tqdm(train_loader, desc=f"epoch {epoch_ran}/{epochs}"):
             x, y = x.to(device), y.to(device)
             opt.zero_grad()
             logits = model(x)
@@ -281,15 +444,29 @@ def train_supervised(
             for x, y in val_loader:
                 x, y = x.to(device), y.to(device)
                 logits = model(x)
-                loss = loss_fn(logits, y)
+                loss = F.cross_entropy(logits, y)
                 val_loss += loss.item() * x.size(0)
                 pred = logits.argmax(dim=1)
                 correct += (pred == y).sum().item()
                 total += y.numel()
         val_loss /= len(val_ds)
-        if val_loss < best_val:
-            best_val = val_loss
+        val_acc = correct / total if total else 0.0
+
+        improved = val_acc > best_val_acc + 1e-7 or (
+            abs(val_acc - best_val_acc) < 1e-7 and val_loss < best_val_loss - 1e-7
+        )
+        if improved:
+            best_val_acc = val_acc
+            best_val_loss = val_loss
             best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+            stalled = 0
+        else:
+            stalled += 1
+
+        scheduler.step()
+
+        if patience > 0 and stalled >= patience:
+            break
 
     if best_state is not None:
         model.load_state_dict(best_state)
@@ -300,9 +477,21 @@ def train_supervised(
         "class_to_idx": {k: int(i) for i, k in enumerate(classes)},
         "img_size": img_size,
         "epochs": epochs,
-        "best_val_loss": float(best_val),
+        "epochs_run": epoch_ran,
+        "best_val_accuracy": float(best_val_acc),
+        "best_val_loss": float(best_val_loss),
         "crop_bottom_fraction": float(crop_bottom_fraction),
         "manifest": str(Path(manifest).as_posix()) if manifest is not None else None,
+        "training": {
+            "strong_augment": eff_strong,
+            "label_smoothing": ls,
+            "val_fraction": val_fraction,
+            "stratified_split": use_stratify,
+            "balance_sampler": use_balance,
+            "patience": patience,
+            "early_stopped": bool(patience > 0 and stalled >= patience and epoch_ran < epochs),
+            "train_sample_duplicates": int(train_sample_duplicates),
+        },
     }
     torch.save(model.state_dict(), out_dir / "model.pth")
     with open(out_dir / "meta.json", "w", encoding="utf-8") as f:
@@ -336,6 +525,8 @@ def _load_model_for_inference(
 def predict_images(
     image_paths: list[Path | str],
     model_dir: Path | str,
+    *,
+    tta: bool = False,
 ) -> list[dict[str, Any]]:
     """Return class probabilities for each image path."""
     model_dir = Path(model_dir)
@@ -347,10 +538,7 @@ def predict_images(
     for p in image_paths:
         p = Path(p)
         img = Image.open(p).convert("RGB")
-        x = tfm(img).unsqueeze(0).to(device)
-        with torch.no_grad():
-            logits = model(x)
-            prob = torch.softmax(logits, dim=1).cpu().numpy().ravel()
+        prob = _probabilities_for_pil(img, model, tfm, device, tta=tta)
         top = int(np.argmax(prob))
         results.append(
             {
@@ -366,6 +554,8 @@ def predict_images(
 def predict_images_from_bytes(
     files: list[tuple[str, bytes]],
     model_dir: Path | str,
+    *,
+    tta: bool = False,
 ) -> list[dict[str, Any]]:
     """Predict from (filename, bytes) pairs (e.g. Streamlit uploads)."""
     model_dir = Path(model_dir)
@@ -375,10 +565,7 @@ def predict_images_from_bytes(
     results: list[dict[str, Any]] = []
     for name, data in files:
         img = Image.open(io.BytesIO(data)).convert("RGB")
-        x = tfm(img).unsqueeze(0).to(device)
-        with torch.no_grad():
-            logits = model(x)
-            prob = torch.softmax(logits, dim=1).cpu().numpy().ravel()
+        prob = _probabilities_for_pil(img, model, tfm, device, tta=tta)
         top = int(np.argmax(prob))
         results.append(
             {
@@ -397,6 +584,7 @@ def predict_images_from_bytes_with_annotation(
     *,
     blend_heatmap: bool = True,
     heatmap_alpha: float = 0.38,
+    tta: bool = False,
 ) -> list[dict[str, Any]]:
     """
     Same as ``predict_images_from_bytes``, plus ``annotated_png`` bytes per item:
@@ -410,10 +598,7 @@ def predict_images_from_bytes_with_annotation(
     results: list[dict[str, Any]] = []
     for name, data in files:
         img = Image.open(io.BytesIO(data)).convert("RGB")
-        x = tfm(img).unsqueeze(0).to(device)
-        with torch.no_grad():
-            logits = model(x)
-            prob = torch.softmax(logits, dim=1).cpu().numpy().ravel()
+        prob = _probabilities_for_pil(img, model, tfm, device, tta=tta)
         top = int(np.argmax(prob))
         row: dict[str, Any] = {
             "path": name,
