@@ -110,7 +110,15 @@ def main() -> None:
         help=f"Dataset root (default: {fesem_supervised_data_dir()})",
     )
     p.add_argument("--out-dir", type=Path, default=Path("models/fesem_supervised"))
-    p.add_argument("--backbone", type=str, default="resnet18")
+    p.add_argument(
+        "--backbone",
+        type=str,
+        default="efficientnet_b0",
+        help=(
+            "timm model name with ImageNet pretrained weights (e.g. efficientnet_b0, "
+            "resnet50, convnext_tiny, regnety_032)."
+        ),
+    )
     p.add_argument("--epochs", type=int, default=35)
     p.add_argument("--batch-size", type=int, default=8)
     p.add_argument("--lr", type=float, default=1e-4)
@@ -198,6 +206,29 @@ def main() -> None:
             "normally strong augment is reduced, repeats are bumped, label smoothing capped."
         ),
     )
+    p.add_argument(
+        "--backbone-lr-mult",
+        type=float,
+        default=0.15,
+        help=(
+            "Multiplier on --lr for pretrained backbone weights (classification head uses full "
+            "--lr). Typical fine-tuning: 0.05–0.25. Ignored with --uniform-lr."
+        ),
+    )
+    p.add_argument(
+        "--uniform-lr",
+        action="store_true",
+        help="Use one learning rate for all layers (legacy behavior).",
+    )
+    p.add_argument(
+        "--freeze-backbone-epochs",
+        type=int,
+        default=0,
+        help=(
+            "Train only the classification head for this many epochs (backbone frozen), "
+            "then fine-tune the full network with backbone LR multiplier. Useful for tiny sets."
+        ),
+    )
     args = p.parse_args()
 
     root = project_root()
@@ -238,6 +269,9 @@ def main() -> None:
         train_sample_duplicates=max(1, int(args.train_duplicates)),
         neighbor_similarity_threshold=float(args.neighbor_similarity_threshold),
         small_set_auto=not args.no_small_set_auto,
+        backbone_lr_mult=float(args.backbone_lr_mult),
+        uniform_lr=args.uniform_lr,
+        freeze_backbone_epochs=int(args.freeze_backbone_epochs),
     )
     print(out)
 

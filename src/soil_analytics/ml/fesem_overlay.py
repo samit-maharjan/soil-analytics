@@ -188,7 +188,7 @@ def render_annotated_fesem_png(
     Build a PNG with class label on the left, optional Grad-CAM tint, and an arrow toward
     the high-saliency region (Grad-CAM peak centroid), matching common FESEM annotation style.
     """
-    backbone = str(meta.get("backbone", "resnet18"))
+    backbone = str(meta.get("backbone", "efficientnet_b0"))
     crop_frac = float(meta.get("crop_bottom_fraction", 0.0))
 
     pil_base = _pil_bottom_crop(pil_orig.convert("RGB"), crop_frac)

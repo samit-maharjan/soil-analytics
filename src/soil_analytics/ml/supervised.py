@@ -325,6 +325,61 @@ def supervised_data_dir() -> Path:
     return fesem_supervised_data_dir()
 
 
+def _split_classifier_vs_backbone(model: nn.Module) -> tuple[list[nn.Parameter], list[nn.Parameter]]:
+    """
+    Split timm model parameters into backbone vs classification head for transfer LR.
+    Uses ``get_classifier()`` when available (ResNet, EfficientNet, ConvNeXt, …).
+    """
+    if hasattr(model, "get_classifier"):
+        cls_mod = model.get_classifier()
+        cls_ids = {id(p) for p in cls_mod.parameters()}
+        backbone_params: list[nn.Parameter] = []
+        head_params: list[nn.Parameter] = []
+        for p in model.parameters():
+            if id(p) in cls_ids:
+                head_params.append(p)
+            else:
+                backbone_params.append(p)
+        if head_params:
+            return backbone_params, head_params
+
+    backbone_params = []
+    head_params = []
+    for name, p in model.named_parameters():
+        nl = name.lower()
+        if (
+            "classifier" in nl
+            or nl.startswith("head.")
+            or ".head." in nl
+            or nl == "fc.weight"
+            or nl == "fc.bias"
+            or ".fc." in nl
+        ):
+            head_params.append(p)
+        else:
+            backbone_params.append(p)
+    if not head_params:
+        return list(model.parameters()), []
+    return backbone_params, head_params
+
+
+def _optimizer_param_groups(
+    model: nn.Module,
+    lr: float,
+    backbone_lr_mult: float,
+    *,
+    weight_decay: float,
+) -> list[dict[str, Any]]:
+    """Lower LR on backbone weights (ImageNet pretrain); full ``lr`` on the new head."""
+    bp, hp = _split_classifier_vs_backbone(model)
+    if not hp or backbone_lr_mult >= 0.999:
+        return [{"params": list(model.parameters()), "lr": float(lr), "weight_decay": weight_decay}]
+    return [
+        {"params": bp, "lr": float(lr) * float(backbone_lr_mult), "weight_decay": weight_decay},
+        {"params": hp, "lr": float(lr), "weight_decay": weight_decay},
+    ]
+
+
 class _ManifestDataset(Dataset[tuple[torch.Tensor, int]]):
     def __init__(
         self,
@@ -364,7 +419,7 @@ def _resolve_manifest_samples(
 def train_supervised(
     data_dir: Path | str,
     out_dir: Path | str,
-    backbone: str = "resnet18",
+    backbone: str = "efficientnet_b0",
     img_size: int = 224,
     epochs: int = 35,
     batch_size: int = 8,
@@ -383,6 +438,10 @@ def train_supervised(
     train_sample_duplicates: int = 1,
     small_set_auto: bool = True,
     neighbor_similarity_threshold: float = 0.988,
+    *,
+    backbone_lr_mult: float = 0.15,
+    uniform_lr: bool = False,
+    freeze_backbone_epochs: int = 0,
 ) -> dict[str, Any]:
     """
     Train a classifier on either:
@@ -390,16 +449,18 @@ def train_supervised(
     - PyTorch ImageFolder layout: ``data_dir/class_name/*.png``
     - Or a CSV manifest (``path,label`` columns) with image paths relative to ``data_dir``.
 
-    Uses stratified train/val split when possible, stronger augmentations for small FESEM sets,
-    label smoothing, cosine LR decay, checkpoint by validation accuracy, and optional early stopping.
+    **Transfer learning:** ``backbone`` is loaded from **ImageNet-pretrained** weights via timm
+    (e.g. ``efficientnet_b0``, ``resnet50``, ``convnext_tiny``, ``regnety_032``).
+    By default the optimizer uses a **lower LR on backbone** (``backbone_lr_mult``) vs the
+    classification head — standard fine-tuning for small microscopy sets.
 
-    Set ``train_sample_duplicates`` > 1 to list each training image that many times per epoch
-    (more gradient steps on the same labeled files, like training the same data multiple times
-    per pass through the dataset).
+    Uses stratified train/val split when possible, FESEM-oriented augmentation, label smoothing,
+    cosine LR decay, checkpoint by validation accuracy, and optional early stopping.
+
+    Set ``train_sample_duplicates`` > 1 to list each training image that many times per epoch.
 
     With ``small_set_auto`` (default True), tiny training splits (≤28 unique train images before
-    duplication) reduce strong augmentation and label smoothing and increase duplicate exposure
-    so predictions track the supervised set better.
+    duplication) reduce strong augmentation and label smoothing and increase duplicate exposure.
 
     Saves model.pth, meta.json.
     """
@@ -560,14 +621,22 @@ def train_supervised(
         train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=0)
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=0)
 
+    wd = 0.02
+    mult = 1.0 if uniform_lr else float(backbone_lr_mult)
+
     model = timm.create_model(backbone, pretrained=True, num_classes=len(classes))
     model = model.to(device)
-    opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.02)
+
+    backbone_params, head_params = _split_classifier_vs_backbone(model)
+    freeze_epochs = max(0, min(int(freeze_backbone_epochs), epochs))
+    if freeze_epochs > 0 and not head_params:
+        freeze_epochs = 0
+
     ls = float(np.clip(label_smooth_eff, 0.0, 0.35))
     loss_fn = nn.CrossEntropyLoss(label_smoothing=ls)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        opt, T_max=max(1, epochs), eta_min=lr * 0.02
-    )
+
+    opt: torch.optim.Optimizer | None = None
+    scheduler: Any = None
 
     best_val_acc = -1.0
     best_val_loss = float("inf")
@@ -577,6 +646,46 @@ def train_supervised(
 
     for epoch in range(epochs):
         epoch_ran = epoch + 1
+
+        if freeze_epochs > 0 and epoch == 0:
+            for p in backbone_params:
+                p.requires_grad = False
+            for p in head_params:
+                p.requires_grad = True
+            trainable = [p for p in model.parameters() if p.requires_grad]
+            opt = torch.optim.AdamW(trainable, lr=lr, weight_decay=wd)
+            eta_frozen = lr * 0.02
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                opt, T_max=max(1, freeze_epochs), eta_min=eta_frozen
+            )
+        elif (
+            freeze_epochs > 0
+            and epoch == freeze_epochs
+            and freeze_epochs < epochs
+        ):
+            for p in backbone_params:
+                p.requires_grad = True
+            for p in head_params:
+                p.requires_grad = True
+            opt = torch.optim.AdamW(
+                _optimizer_param_groups(model, lr, mult, weight_decay=wd),
+            )
+            rest = max(1, epochs - freeze_epochs)
+            eta_tail = lr * mult * 0.02
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=rest, eta_min=eta_tail)
+
+        elif freeze_epochs == 0 and epoch == 0:
+            for p in model.parameters():
+                p.requires_grad = True
+            opt = torch.optim.AdamW(
+                _optimizer_param_groups(model, lr, mult, weight_decay=wd),
+            )
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                opt, T_max=max(1, epochs), eta_min=lr * mult * 0.02
+            )
+
+        assert opt is not None and scheduler is not None
+
         model.train()
         for x, y in tqdm(train_loader, desc=f"epoch {epoch_ran}/{epochs}"):
             x, y = x.to(device), y.to(device)
@@ -633,7 +742,11 @@ def train_supervised(
         "crop_bottom_fraction": float(crop_bottom_fraction),
         "manifest": str(Path(manifest).as_posix()) if manifest is not None else None,
         "neighbor_similarity_threshold": float(neighbor_similarity_threshold),
+        "pretrained_weights": "imagenet",
         "training": {
+            "backbone_lr_mult": float(backbone_lr_mult) if not uniform_lr else 1.0,
+            "uniform_lr": bool(uniform_lr),
+            "freeze_backbone_epochs": int(freeze_epochs),
             "strong_augment": aug_reported,
             "label_smoothing": ls,
             "val_fraction": val_fraction,

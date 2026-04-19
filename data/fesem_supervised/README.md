@@ -29,7 +29,7 @@ Omit `--manifest-out` to print the CSV to stdout instead of a file.
 
 Then edit `my_fesem_labels.csv` and train with `--manifest scripts/my_fesem_labels.csv`.
 
-For many classes and only a few images per class, consider a larger backbone, e.g. `--backbone efficientnet_b0` (first run may download weights).
+The default backbone is **EfficientNet-B0** (ImageNet pretrained via timm). Alternatives include `--backbone resnet50`, `--backbone convnext_tiny`, or `--backbone regnety_032`; the first download of weights may take a minute.
 
 ```text
 data/fesem_supervised/
