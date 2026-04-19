@@ -53,7 +53,10 @@ if _remarks_path.is_file():
             )
 
 try:
-    from soil_analytics.ml.supervised import predict_images_from_bytes
+    from soil_analytics.ml.supervised import (
+        predict_images_from_bytes,
+        predict_images_from_bytes_with_annotation,
+    )
     from soil_analytics.ml.unsupervised import run_unsupervised_pipeline
 except ImportError as e:
     st.error(
@@ -104,6 +107,24 @@ with tab_sup:
             "training can strip the bottom strip of pixels."
             + crop_note
         )
+    st.caption(
+        "**On-image result** draws the predicted class and an arrow (Grad-CAM saliency) "
+        "like annotated FESEM figures."
+    )
+    overlay_style = st.checkbox(
+        "On-image label + arrow + heat tint (reference figure style)",
+        value=True,
+        key="fesem_overlay_style",
+    )
+    heatmap_alpha = st.slider(
+        "Saliency heatmap blend (0 = off)",
+        min_value=0.0,
+        max_value=0.75,
+        value=0.38,
+        step=0.02,
+        key="fesem_hm_alpha",
+    )
+    blend_hm = overlay_style and heatmap_alpha > 1e-6
     up_sup = st.file_uploader(
         "FESEM images",
         type=["png", "jpg", "jpeg", "tif", "tiff"],
@@ -114,18 +135,41 @@ with tab_sup:
         files = [(u.name, u.getvalue()) for u in up_sup]
         if st.button("Run supervised inference", key="run_sup"):
             with st.spinner("Running inference…"):
-                preds = predict_images_from_bytes(files, model_path)
-            df = pd.DataFrame(preds)
+                if overlay_style:
+                    preds = predict_images_from_bytes_with_annotation(
+                        files,
+                        model_path,
+                        blend_heatmap=blend_hm,
+                        heatmap_alpha=heatmap_alpha,
+                    )
+                else:
+                    preds = predict_images_from_bytes(files, model_path)
+            df = pd.DataFrame(
+                [{k: v for k, v in r.items() if k != "annotated_png"} for r in preds]
+            )
             st.dataframe(df, use_container_width=True)
             for row, upl in zip(preds, up_sup, strict=True):
                 st.divider()
                 col_img, col_out = st.columns([1, 1])
                 with col_img:
-                    st.image(
-                        BytesIO(upl.getvalue()),
-                        caption=row["path"],
-                        use_container_width=True,
-                    )
+                    if overlay_style and "annotated_png" in row:
+                        st.image(
+                            BytesIO(row["annotated_png"]),
+                            caption=f"{row['path']} — annotated",
+                            use_container_width=True,
+                        )
+                        with st.expander("Original upload"):
+                            st.image(
+                                BytesIO(upl.getvalue()),
+                                caption=row["path"],
+                                use_container_width=True,
+                            )
+                    else:
+                        st.image(
+                            BytesIO(upl.getvalue()),
+                            caption=row["path"],
+                            use_container_width=True,
+                        )
                 with col_out:
                     st.markdown(
                         f"**Predicted:** `{row['predicted_class']}`  \n"

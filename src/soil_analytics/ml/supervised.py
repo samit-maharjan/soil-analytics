@@ -17,6 +17,8 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import datasets, transforms
 from tqdm import tqdm
 
+from soil_analytics.ml.fesem_overlay import annotate_prediction_dict
+
 
 def _device() -> torch.device:
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -386,4 +388,48 @@ def predict_images_from_bytes(
                 "probabilities": {classes[i]: float(prob[i]) for i in range(len(classes))},
             }
         )
+    return results
+
+
+def predict_images_from_bytes_with_annotation(
+    files: list[tuple[str, bytes]],
+    model_dir: Path | str,
+    *,
+    blend_heatmap: bool = True,
+    heatmap_alpha: float = 0.38,
+) -> list[dict[str, Any]]:
+    """
+    Same as ``predict_images_from_bytes``, plus ``annotated_png`` bytes per item:
+    class label + confidence on the image, optional Grad-CAM heat tint,
+    arrow toward salient region.
+    """
+    model_dir = Path(model_dir)
+    device = _device()
+    model, meta, tfm = _load_model_for_inference(model_dir, device)
+    classes: list[str] = meta["classes"]
+    results: list[dict[str, Any]] = []
+    for name, data in files:
+        img = Image.open(io.BytesIO(data)).convert("RGB")
+        x = tfm(img).unsqueeze(0).to(device)
+        with torch.no_grad():
+            logits = model(x)
+            prob = torch.softmax(logits, dim=1).cpu().numpy().ravel()
+        top = int(np.argmax(prob))
+        row: dict[str, Any] = {
+            "path": name,
+            "predicted_class": classes[top],
+            "confidence": float(prob[top]),
+            "probabilities": {classes[i]: float(prob[i]) for i in range(len(classes))},
+        }
+        row["annotated_png"] = annotate_prediction_dict(
+            data,
+            row,
+            model,
+            meta,
+            tfm,
+            device,
+            blend_heatmap=blend_heatmap,
+            heatmap_alpha=heatmap_alpha,
+        )
+        results.append(row)
     return results

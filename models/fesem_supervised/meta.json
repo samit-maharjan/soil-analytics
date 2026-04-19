@@ -1,0 +1,16 @@
+{
+  "backbone": "resnet18",
+  "classes": [
+    "Aragonite",
+    "Calcite"
+  ],
+  "class_to_idx": {
+    "Aragonite": 0,
+    "Calcite": 1
+  },
+  "img_size": 224,
+  "epochs": 15,
+  "best_val_loss": 0.8202121257781982,
+  "crop_bottom_fraction": 0.08,
+  "manifest": "/Users/samit.maharjan/Personal/Research/soil-analytics/scripts/fesem_labels.example.csv"
+}

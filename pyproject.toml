@@ -26,7 +26,7 @@ ml = [
   "timm>=0.9",
   "tqdm>=4.66",
 ]
-dev = ["pytest>=7.4", "ruff>=0.1"]
+dev = ["pytest>=7.4"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -34,10 +34,3 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-
-[tool.ruff]
-line-length = 100
-target-version = "py310"
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "W"]
