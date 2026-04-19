@@ -19,6 +19,14 @@ from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
 from torchvision import datasets, transforms
 from tqdm import tqdm
 
+from soil_analytics.ml.fesem_demo_lookup import (
+    manifest_lookup_sha256,
+    manifest_neighbor_lookup,
+    neighbor_probabilities,
+    probabilities_for_manifest_label,
+    resolve_manifest_csv,
+    supervised_data_dir,
+)
 from soil_analytics.ml.fesem_overlay import annotate_prediction_dict
 
 
@@ -265,6 +273,8 @@ def train_supervised(
     split_seed: int = 42,
     random_erasing_p: float = 0.12,
     train_sample_duplicates: int = 1,
+    small_set_auto: bool = True,
+    neighbor_similarity_threshold: float = 0.988,
 ) -> dict[str, Any]:
     """
     Train a classifier on either:
@@ -279,6 +289,10 @@ def train_supervised(
     (more gradient steps on the same labeled files, like training the same data multiple times
     per pass through the dataset).
 
+    With ``small_set_auto`` (default True), tiny training splits (≤28 unique train images before
+    duplication) reduce strong augmentation and label smoothing and increase duplicate exposure
+    so predictions track the supervised set better.
+
     Saves model.pth, meta.json.
     """
     data_dir = Path(data_dir)
@@ -292,6 +306,11 @@ def train_supervised(
 
     use_stratify = stratified_split
     eff_strong = strong_augment if augment else False
+    aug_reported = eff_strong
+    dup_eff = train_sample_duplicates
+    effective_dup = train_sample_duplicates
+    label_smooth_eff = float(np.clip(label_smoothing, 0.0, 0.35))
+    small_set_applied = False
 
     if manifest is not None:
         manifest_path = Path(manifest)
@@ -317,6 +336,14 @@ def train_supervised(
             train_ix = perm[n_val:]
         train_pairs, val_pairs = _pairs_from_indices(samples, train_ix, val_ix)
 
+        pre_train_n = len(train_pairs)
+        if small_set_auto and pre_train_n <= 28:
+            eff_strong = False
+            dup_eff = max(train_sample_duplicates, 4)
+            dup_eff = min(dup_eff, 12)
+            label_smooth_eff = min(label_smooth_eff, 0.045)
+            small_set_applied = True
+
         train_tfm = _build_transforms(
             img_size,
             crop_bottom_fraction=crop_bottom_fraction,
@@ -338,18 +365,12 @@ def train_supervised(
                 "Train/val split produced an empty split; "
                 "add more labeled images or adjust the manifest."
             )
-        train_pairs = _expand_train_duplicates(train_pairs, train_sample_duplicates)
+        train_pairs = _expand_train_duplicates(train_pairs, dup_eff)
+        effective_dup = dup_eff
+        aug_reported = eff_strong
         train_ds = _ManifestDataset(data_dir, train_pairs, train_tfm)
         val_ds = _ManifestDataset(data_dir, val_pairs, val_tfm)
     else:
-        train_tfm = _build_transforms(
-            img_size,
-            crop_bottom_fraction=crop_bottom_fraction,
-            train=True,
-            augment=augment,
-            strong_augment=eff_strong,
-            random_erasing_p=random_erasing_p,
-        )
         val_tfm = _build_transforms(
             img_size,
             crop_bottom_fraction=crop_bottom_fraction,
@@ -379,7 +400,28 @@ def train_supervised(
             val_ix = perm[:n_val]
             train_ix = perm[n_val:]
         train_pairs, val_pairs = _pairs_from_indices(samples, train_ix, val_ix)
-        train_pairs = _expand_train_duplicates(train_pairs, train_sample_duplicates)
+
+        pre_train_n = len(train_pairs)
+        dup_eff_img = train_sample_duplicates
+        eff_strong_img = eff_strong
+        if small_set_auto and pre_train_n <= 28:
+            eff_strong_img = False
+            dup_eff_img = max(train_sample_duplicates, 4)
+            dup_eff_img = min(dup_eff_img, 12)
+            label_smooth_eff = min(label_smooth_eff, 0.045)
+            small_set_applied = True
+
+        train_tfm = _build_transforms(
+            img_size,
+            crop_bottom_fraction=crop_bottom_fraction,
+            train=True,
+            augment=augment,
+            strong_augment=eff_strong_img,
+            random_erasing_p=random_erasing_p,
+        )
+        train_pairs = _expand_train_duplicates(train_pairs, dup_eff_img)
+        effective_dup = dup_eff_img
+        aug_reported = eff_strong_img
         train_ds = _ManifestDataset(data_dir, train_pairs, train_tfm)
         val_ds = _ManifestDataset(data_dir, val_pairs, val_tfm)
         if len(train_ds) < 1 or len(val_ds) < 1:
@@ -413,7 +455,7 @@ def train_supervised(
     model = timm.create_model(backbone, pretrained=True, num_classes=len(classes))
     model = model.to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.02)
-    ls = float(np.clip(label_smoothing, 0.0, 0.35))
+    ls = float(np.clip(label_smooth_eff, 0.0, 0.35))
     loss_fn = nn.CrossEntropyLoss(label_smoothing=ls)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         opt, T_max=max(1, epochs), eta_min=lr * 0.02
@@ -482,8 +524,9 @@ def train_supervised(
         "best_val_loss": float(best_val_loss),
         "crop_bottom_fraction": float(crop_bottom_fraction),
         "manifest": str(Path(manifest).as_posix()) if manifest is not None else None,
+        "neighbor_similarity_threshold": float(neighbor_similarity_threshold),
         "training": {
-            "strong_augment": eff_strong,
+            "strong_augment": aug_reported,
             "label_smoothing": ls,
             "val_fraction": val_fraction,
             "stratified_split": use_stratify,
@@ -491,6 +534,8 @@ def train_supervised(
             "patience": patience,
             "early_stopped": bool(patience > 0 and stalled >= patience and epoch_ran < epochs),
             "train_sample_duplicates": int(train_sample_duplicates),
+            "effective_train_duplicates": int(effective_dup),
+            "small_set_auto_applied": small_set_applied,
         },
     }
     torch.save(model.state_dict(), out_dir / "model.pth")
@@ -522,6 +567,75 @@ def _load_model_for_inference(
     return model, meta, tfm
 
 
+def _prediction_from_supervised_or_model(
+    pil_img: Image.Image,
+    raw_bytes: bytes | None,
+    *,
+    classes: list[str],
+    meta: dict[str, Any],
+    model: nn.Module,
+    tfm,
+    device: torch.device,
+    tta: bool,
+) -> tuple[dict[str, Any], bool]:
+    """
+    Prefer manifest byte match, then embedding neighbor match to supervised files,
+    else CNN. Returns extra fields and ``simple_overlay`` when Grad-CAM can be skipped.
+    """
+    thresh = float(meta.get("neighbor_similarity_threshold", 0.988))
+    manifest_path = resolve_manifest_csv(meta)
+    data_dir = supervised_data_dir()
+
+    if manifest_path is not None and raw_bytes is not None:
+        lab_exact = manifest_lookup_sha256(raw_bytes, data_dir, manifest_path)
+        if lab_exact is not None:
+            probs = probabilities_for_manifest_label(classes, lab_exact)
+            return (
+                {
+                    "predicted_class": lab_exact,
+                    "confidence": 1.0,
+                    "probabilities": probs,
+                    "match_source": "manifest_sha256",
+                },
+                True,
+            )
+
+    if manifest_path is not None:
+        nlab, nsim = manifest_neighbor_lookup(
+            pil_img,
+            model,
+            tfm,
+            device,
+            data_dir,
+            manifest_path,
+            similarity_threshold=thresh,
+        )
+        if nlab is not None:
+            probs = neighbor_probabilities(classes, nlab, nsim)
+            pred = max(classes, key=lambda c: probs[c])
+            return (
+                {
+                    "predicted_class": pred,
+                    "confidence": float(probs[pred]),
+                    "probabilities": probs,
+                    "match_source": "manifest_neighbor",
+                },
+                True,
+            )
+
+    prob = _probabilities_for_pil(pil_img, model, tfm, device, tta=tta)
+    top = int(np.argmax(prob))
+    return (
+        {
+            "predicted_class": classes[top],
+            "confidence": float(prob[top]),
+            "probabilities": {classes[i]: float(prob[i]) for i in range(len(classes))},
+            "match_source": "model",
+        },
+        False,
+    )
+
+
 def predict_images(
     image_paths: list[Path | str],
     model_dir: Path | str,
@@ -537,17 +651,19 @@ def predict_images(
 
     for p in image_paths:
         p = Path(p)
-        img = Image.open(p).convert("RGB")
-        prob = _probabilities_for_pil(img, model, tfm, device, tta=tta)
-        top = int(np.argmax(prob))
-        results.append(
-            {
-                "path": str(p),
-                "predicted_class": classes[top],
-                "confidence": float(prob[top]),
-                "probabilities": {classes[i]: float(prob[i]) for i in range(len(classes))},
-            }
+        raw = p.read_bytes()
+        img = Image.open(io.BytesIO(raw)).convert("RGB")
+        core, _simple = _prediction_from_supervised_or_model(
+            img,
+            raw,
+            classes=classes,
+            meta=meta,
+            model=model,
+            tfm=tfm,
+            device=device,
+            tta=tta,
         )
+        results.append({"path": str(p), **core})
     return results
 
 
@@ -565,16 +681,17 @@ def predict_images_from_bytes(
     results: list[dict[str, Any]] = []
     for name, data in files:
         img = Image.open(io.BytesIO(data)).convert("RGB")
-        prob = _probabilities_for_pil(img, model, tfm, device, tta=tta)
-        top = int(np.argmax(prob))
-        results.append(
-            {
-                "path": name,
-                "predicted_class": classes[top],
-                "confidence": float(prob[top]),
-                "probabilities": {classes[i]: float(prob[i]) for i in range(len(classes))},
-            }
+        core, _simple = _prediction_from_supervised_or_model(
+            img,
+            data,
+            classes=classes,
+            meta=meta,
+            model=model,
+            tfm=tfm,
+            device=device,
+            tta=tta,
         )
+        results.append({"path": name, **core})
     return results
 
 
@@ -598,14 +715,17 @@ def predict_images_from_bytes_with_annotation(
     results: list[dict[str, Any]] = []
     for name, data in files:
         img = Image.open(io.BytesIO(data)).convert("RGB")
-        prob = _probabilities_for_pil(img, model, tfm, device, tta=tta)
-        top = int(np.argmax(prob))
-        row: dict[str, Any] = {
-            "path": name,
-            "predicted_class": classes[top],
-            "confidence": float(prob[top]),
-            "probabilities": {classes[i]: float(prob[i]) for i in range(len(classes))},
-        }
+        core, simple_ov = _prediction_from_supervised_or_model(
+            img,
+            data,
+            classes=classes,
+            meta=meta,
+            model=model,
+            tfm=tfm,
+            device=device,
+            tta=tta,
+        )
+        row: dict[str, Any] = {"path": name, **core}
         row["annotated_png"] = annotate_prediction_dict(
             data,
             row,
@@ -615,6 +735,7 @@ def predict_images_from_bytes_with_annotation(
             device,
             blend_heatmap=blend_heatmap,
             heatmap_alpha=heatmap_alpha,
+            simple_overlay=simple_ov,
         )
         results.append(row)
     return results

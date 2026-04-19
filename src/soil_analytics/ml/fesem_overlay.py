@@ -182,6 +182,7 @@ def render_annotated_fesem_png(
     *,
     blend_heatmap: bool = True,
     heatmap_alpha: float = 0.38,
+    simple_overlay: bool = False,
 ) -> bytes:
     """
     Build a PNG with class label on the left, optional Grad-CAM tint, and an arrow toward
@@ -193,25 +194,29 @@ def render_annotated_fesem_png(
     pil_base = _pil_bottom_crop(pil_orig.convert("RGB"), crop_frac)
     w, h = pil_base.size
 
-    x = tfm(pil_orig).unsqueeze(0).to(device)
     class_list: list[str] = meta["classes"]
-    pred_idx = int(class_list.index(predicted_class))
-
-    cam = _compute_grad_cam(model, x, pred_idx, backbone)
-
     rgb = np.array(pil_base, dtype=np.uint8)
     cam_rs: np.ndarray | None = None
-    if cam is not None:
-        cam_rs = np.array(
-            Image.fromarray((cam * 255.0).astype(np.uint8)).resize((w, h), Image.BILINEAR),
-            dtype=np.float32,
-        ) / 255.0
-        if blend_heatmap and heatmap_alpha > 1e-6:
-            jet = _jet_rgb(cam_rs)
-            a = float(np.clip(heatmap_alpha, 0.0, 1.0))
-            blended = rgb.astype(np.float32) * (1.0 - a) + jet.astype(np.float32) * a
-            rgb = np.clip(blended, 0, 255).astype(np.uint8)
-    tip_x, tip_y = _tip_from_cam(cam_rs, w, h)
+
+    use_gradcam = not simple_overlay and predicted_class in class_list
+
+    if use_gradcam:
+        x = tfm(pil_orig).unsqueeze(0).to(device)
+        pred_idx = int(class_list.index(predicted_class))
+        cam = _compute_grad_cam(model, x, pred_idx, backbone)
+        if cam is not None:
+            cam_rs = np.array(
+                Image.fromarray((cam * 255.0).astype(np.uint8)).resize((w, h), Image.BILINEAR),
+                dtype=np.float32,
+            ) / 255.0
+            if blend_heatmap and heatmap_alpha > 1e-6:
+                jet = _jet_rgb(cam_rs)
+                a = float(np.clip(heatmap_alpha, 0.0, 1.0))
+                blended = rgb.astype(np.float32) * (1.0 - a) + jet.astype(np.float32) * a
+                rgb = np.clip(blended, 0, 255).astype(np.uint8)
+        tip_x, tip_y = _tip_from_cam(cam_rs, w, h)
+    else:
+        tip_x, tip_y = _tip_from_cam(None, w, h)
 
     tip_x = int(np.clip(tip_x, w * 0.08, w * 0.92))
     tip_y = int(np.clip(tip_y, h * 0.08, h * 0.92))
@@ -260,6 +265,7 @@ def annotate_prediction_dict(
     *,
     blend_heatmap: bool = True,
     heatmap_alpha: float = 0.38,
+    simple_overlay: bool = False,
 ) -> bytes:
     pil = Image.open(io.BytesIO(raw_bytes)).convert("RGB")
     return render_annotated_fesem_png(
@@ -272,4 +278,5 @@ def annotate_prediction_dict(
         device,
         blend_heatmap=blend_heatmap,
         heatmap_alpha=heatmap_alpha,
+        simple_overlay=simple_overlay,
     )

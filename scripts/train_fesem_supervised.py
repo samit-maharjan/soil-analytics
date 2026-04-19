@@ -95,6 +95,23 @@ def main() -> None:
             "(more optimizer steps on the same labeled images; try 2–4 for tiny datasets)."
         ),
     )
+    p.add_argument(
+        "--neighbor-similarity-threshold",
+        type=float,
+        default=0.988,
+        help=(
+            "Stored in meta.json for inference: cosine similarity gate for embedding-neighbor "
+            "matches (exact manifest bytes match still wins)."
+        ),
+    )
+    p.add_argument(
+        "--no-small-set-auto",
+        action="store_true",
+        help=(
+            "Disable automatic settings for tiny train splits (≤28 unique train images): "
+            "normally strong augment is reduced, repeats are bumped, label smoothing capped."
+        ),
+    )
     args = p.parse_args()
 
     data_dir = args.data_dir if args.data_dir is not None else fesem_supervised_data_dir()
@@ -122,6 +139,8 @@ def main() -> None:
         patience=int(args.patience),
         split_seed=int(args.split_seed),
         train_sample_duplicates=max(1, int(args.train_duplicates)),
+        neighbor_similarity_threshold=float(args.neighbor_similarity_threshold),
+        small_set_auto=not args.no_small_set_auto,
     )
     print(out)
 
