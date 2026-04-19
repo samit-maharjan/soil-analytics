@@ -22,8 +22,10 @@ Keep images under a folder (e.g. `supervised/`) and list **path** and **label** 
 **Regenerate a round-robin draft** from `config/reference_ranges/fesem_remarks.yaml` and whatever files are in `supervised/`:
 
 ```text
-python scripts/generate_fesem_manifest.py --out scripts/my_fesem_labels.csv
+python scripts/train_fesem_supervised.py --write-manifest --manifest-out scripts/my_fesem_labels.csv
 ```
+
+Omit `--manifest-out` to print the CSV to stdout instead of a file.
 
 Then edit `my_fesem_labels.csv` and train with `--manifest scripts/my_fesem_labels.csv`.
 
