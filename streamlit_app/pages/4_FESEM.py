@@ -1,29 +1,26 @@
-"""FESEM: supervised inference (optional [ml] extra)."""
+"""FESEM: qualitative morphology reference (YAML) and paired micrographs + analysis text."""
 
 from __future__ import annotations
 
-import json
-from io import BytesIO
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 import yaml
 
-from soil_analytics.paths import (
-    fesem_supervised_data_dir,
-    models_dir,
-    project_root,
-    reference_config_dir,
+from soil_analytics.fesem_catalog import (
+    catalog_summary_rows,
+    load_fesem_catalog,
+    match_upload_to_catalog,
 )
+from soil_analytics.paths import fesem_supervised_data_dir, project_root, reference_config_dir
 
 st.set_page_config(page_title="FESEM", layout="wide")
 st.title("FESEM")
 st.caption(
-    "Phase morphology table below uses only config YAML. "
-    "Supervised inference needs `pip install soil-analytics[ml]` and a trained model "
-    "under `models/fesem_supervised/` (default output of `scripts/train_fesem_supervised.py`)."
+    "Phase morphology uses config YAML. Catalogued micrographs live under "
+    "`data/fesem_supervised/micrographs/` with matching analysis text in `analysis/` "
+    "(same base name: e.g. `sample.png` ↔ `sample.txt`)."
 )
 
 _remarks_path = reference_config_dir() / "fesem_remarks.yaml"
@@ -52,146 +49,81 @@ if _remarks_path.is_file():
                 hide_index=True,
             )
 
+data_root_raw = st.text_input(
+    "Catalog root",
+    value=str(fesem_supervised_data_dir()),
+    key="fesem_data_root_input",
+    help="Must contain micrographs/ and optionally analysis/ with paired text files.",
+)
 try:
-    from soil_analytics.ml.supervised import (
-        predict_images_from_bytes,
-        predict_images_from_bytes_with_annotation,
-    )
-except ImportError as e:
-    st.error(
-        "FESEM ML dependencies are not installed. "
-        "Install with: `pip install soil-analytics[ml]` "
-        f"(import error: {e})"
-    )
-    st.stop()
+    data_root = Path(data_root_raw).expanduser().resolve()
+except OSError:
+    data_root = fesem_supervised_data_dir()
 
-default_model = models_dir() / "fesem_supervised"
-
-data_root = fesem_supervised_data_dir()
+pairs = load_fesem_catalog(data_root)
 st.markdown(
-    f"**Default model directory:** `{default_model}` — matches the training script "
-    f"default `--out-dir models/fesem_supervised` (contains `meta.json` + `model.pth`). "
-    f"**Training data root:** `{data_root}` — use ImageFolder class subfolders *or* a CSV manifest "
-    "(see `data/fesem_supervised/README.md`, `scripts/fesem_labels.example.csv`). "
-    "Train from repo root: `python scripts/train_fesem_supervised.py` "
-    "(optional `--manifest …`, `--crop-bottom-fraction …`)."
+    f"**micrographs:** `{data_root / 'micrographs'}`  \n"
+    f"**analysis:** `{data_root / 'analysis'}`"
 )
-model_path = Path(
-    st.text_input("Model directory", value=str(default_model), key="fesem_model_dir")
-)
-meta_path = model_path / "meta.json"
-crop_note = ""
-trained_classes: list[str] = []
-if meta_path.is_file():
-    try:
-        with open(meta_path, encoding="utf-8") as f:
-            _m = json.load(f)
-        trained_classes = list(_m.get("classes") or [])
-        c = float(_m.get("crop_bottom_fraction") or 0.0)
-        if c > 0:
-            crop_note = (
-                f" Inference uses bottom crop **{c:.3f}** of image height "
-                "(matches training)."
-            )
-    except (json.JSONDecodeError, OSError):
-        pass
-if not meta_path.exists():
-    st.warning(
-        "No trained model found (missing meta.json). Train a model or set the path above."
-    )
-elif trained_classes:
-    st.caption(
-        f"This checkpoint has **{len(trained_classes)}** output classes: "
-        f"{', '.join(trained_classes)}. Retrain with an updated manifest to add phases."
-    )
-if crop_note:
-    st.info(
-        "To reduce reliance on overlays and the instrument bar, "
-        "training can strip the bottom strip of pixels."
-        + crop_note
-    )
-st.caption(
-    "**On-image result** draws the predicted class and an arrow (Grad-CAM saliency) "
-    "like annotated FESEM figures."
-)
-overlay_style = st.checkbox(
-    "On-image label + arrow + heat tint (reference figure style)",
-    value=True,
-    key="fesem_overlay_style",
-)
-heatmap_alpha = st.slider(
-    "Saliency heatmap blend (0 = off)",
-    min_value=0.0,
-    max_value=0.75,
-    value=0.38,
-    step=0.02,
-    key="fesem_hm_alpha",
-)
-blend_hm = overlay_style and heatmap_alpha > 1e-6
-tta_infer = st.checkbox(
-    "Stabilize scores (TTA: average with mirror view — more consistent on the same image)",
-    value=True,
-    key="fesem_tta",
-)
-up_sup = st.file_uploader(
-    "FESEM images",
-    type=["png", "jpg", "jpeg", "tif", "tiff"],
-    accept_multiple_files=True,
-    key="fesem_sup",
-)
-if up_sup and meta_path.exists():
-    files = [(u.name, u.getvalue()) for u in up_sup]
-    if st.button("Run supervised inference", key="run_sup"):
-        with st.spinner("Running inference…"):
-            if overlay_style:
-                preds = predict_images_from_bytes_with_annotation(
-                    files,
-                    model_path,
-                    blend_heatmap=blend_hm,
-                    heatmap_alpha=heatmap_alpha,
-                    tta=tta_infer,
-                )
-            else:
-                preds = predict_images_from_bytes(files, model_path, tta=tta_infer)
-        df = pd.DataFrame(
-            [{k: v for k, v in r.items() if k != "annotated_png"} for r in preds]
-        )
-        st.dataframe(df, use_container_width=True)
-        for row, upl in zip(preds, up_sup, strict=True):
-            st.divider()
-            col_img, col_out = st.columns([1, 1])
-            with col_img:
-                if overlay_style and "annotated_png" in row:
-                    st.image(
-                        BytesIO(row["annotated_png"]),
-                        caption=f"{row['path']} — annotated",
-                        use_container_width=True,
-                    )
-                    with st.expander("Original upload"):
-                        st.image(
-                            BytesIO(upl.getvalue()),
-                            caption=row["path"],
-                            use_container_width=True,
-                        )
-                else:
-                    st.image(
-                        BytesIO(upl.getvalue()),
-                        caption=row["path"],
-                        use_container_width=True,
-                    )
-            with col_out:
-                st.markdown(
-                    f"**Predicted:** `{row['predicted_class']}`  \n"
-                    f"**Confidence:** {row['confidence']:.3f}"
-                )
-                probs = row["probabilities"]
-                fig, ax = plt.subplots(figsize=(6, 3))
-                ax.bar(list(probs.keys()), list(probs.values()), color="steelblue")
-                ax.set_ylabel("Probability")
-                ax.set_title("Class probabilities")
-                plt.xticks(rotation=25, ha="right")
-                fig.tight_layout()
-                st.pyplot(fig)
-                plt.close(fig)
 
-st.markdown(f"Project root resolved as: `{project_root()}`")
+if not pairs:
+    st.info(
+        "No micrographs found. Add images under **micrographs/** and optional "
+        "**analysis/<same-stem>.txt** or **.md** (see `data/fesem_supervised/README.md`)."
+    )
+else:
+    st.subheader("Catalog")
+    st.dataframe(
+        pd.DataFrame(catalog_summary_rows(pairs)),
+        use_container_width=True,
+        hide_index=True,
+    )
+    labels = [p.name for p in pairs]
+    choice = st.selectbox("Open micrograph", options=labels, key="fesem_pick")
+    sel = next(p for p in pairs if p.name == choice)
+    c1, c2 = st.columns([1, 1])
+    with c1:
+        st.image(str(sel.image_path), caption=sel.name, use_container_width=True)
+    with c2:
+        if sel.analysis_text:
+            st.markdown(sel.analysis_text)
+        elif sel.analysis_path:
+            st.warning("Analysis file is empty.")
+        else:
+            st.warning(
+                f"No analysis file — add `{data_root / 'analysis' / (sel.image_path.stem + '.txt')}`."
+            )
+
+st.subheader("Upload lookup")
+st.caption(
+    "Matches uploads to catalog micrographs **by file name**. "
+    "If the bytes match the file on disk, the paired analysis is shown as verified."
+)
+up = st.file_uploader(
+    "Micrograph file",
+    type=["png", "jpg", "jpeg", "tif", "tiff"],
+    key="fesem_upload",
+)
+if up and st.button("Look up in catalog", key="fesem_lookup"):
+    raw = up.getvalue()
+    pair, status = match_upload_to_catalog(up.name, raw, data_root=data_root)
+    if status == "catalog_no_such_file":
+        st.error(f"No catalog micrograph named `{Path(up.name).name}`.")
+    elif status == "catalog_match_name_only":
+        st.warning(
+            "File name matches a catalog micrograph, but **file contents differ** from disk. "
+            "Showing the catalog entry for that name anyway."
+        )
+        if pair and pair.analysis_text:
+            st.markdown(pair.analysis_text)
+        elif pair:
+            st.warning("That micrograph has no analysis text yet.")
+    elif status == "catalog_no_analysis":
+        st.success("Catalog file matches on disk (verified).")
+        st.warning("No analysis text is linked for this micrograph.")
+    else:
+        st.success("Catalog file matches on disk (verified).")
+        if pair and pair.analysis_text:
+            st.markdown(pair.analysis_text)
+
+st.markdown(f"Project root: `{project_root()}`")

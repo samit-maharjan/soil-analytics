@@ -32,5 +32,13 @@ def models_dir() -> Path:
 
 
 def fesem_supervised_data_dir() -> Path:
-    """ImageFolder root for supervised FESEM training (`class_name/*.png` under this path)."""
+    """Root for paired FESEM data: ``micrographs/`` and ``analysis/`` (see data/fesem_supervised/README.md)."""
     return project_root() / "data" / "fesem_supervised"
+
+
+def fesem_micrographs_dir() -> Path:
+    return fesem_supervised_data_dir() / "micrographs"
+
+
+def fesem_analysis_dir() -> Path:
+    return fesem_supervised_data_dir() / "analysis"
