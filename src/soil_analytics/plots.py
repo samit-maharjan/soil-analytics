@@ -99,7 +99,7 @@ def plot_xrd_stacked(
     *,
     title: str | None = None,
 ) -> Figure:
-    """Vertically stacked traces (offset intensity) with phase letter annotations (P / M / C)."""
+    """Vertically stacked traces (offset intensity) with short phase-code annotations at matched peaks."""
     if not patterns:
         raise ValueError("patterns must not be empty")
     if len(labels) != len(patterns) or len(hits_per_pattern) != len(patterns):

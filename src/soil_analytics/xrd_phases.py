@@ -1,4 +1,4 @@
-"""XRD phase matching to literature 2θ windows (P / M / C) for stacked plots and tables."""
+"""XRD phase matching to literature 2θ windows for stacked plots and phase summary tables."""
 
 from __future__ import annotations
 
@@ -20,23 +20,31 @@ class PhaseWindow:
     significance: str
 
 
-# Reference windows derived from qualitative tables (Cu Kα-style reporting; same assumptions as app notes).
+# Laboratory 2θ windows (lime mortar / carbonation; Cu Kα-style reporting).
 XRD_PHASE_WINDOWS: tuple[PhaseWindow, ...] = (
-    PhaseWindow("Portlandite", "P", 17.0, 19.0, "Residual/unreacted lime (Ca(OH)₂); indicates partial carbonation"),
-    PhaseWindow("Portlandite", "P", 33.0, 35.0, "Residual/unreacted lime (Ca(OH)₂); indicates partial carbonation"),
-    PhaseWindow("Mullite", "M", 15.5, 17.5, "Fired clay mineral; confirms brick powder (surkhi) addition"),
-    PhaseWindow("Mullite", "M", 25.5, 27.5, "Fired clay mineral; confirms brick powder (surkhi) addition"),
-    PhaseWindow("Mullite", "M", 39.5, 41.5, "Fired clay mineral; confirms brick powder (surkhi) addition"),
-    PhaseWindow("Calcite", "C", 22.0, 24.0, "Major carbonation product (CaCO₃); confirms lime carbonation"),
-    PhaseWindow("Calcite", "C", 28.7, 30.2, "Major carbonation product (CaCO₃); confirms lime carbonation"),
-    PhaseWindow("Calcite", "C", 30.2, 31.8, "Major carbonation product (CaCO₃); confirms lime carbonation"),
-    PhaseWindow("Calcite", "C", 38.5, 40.0, "Major carbonation product (CaCO₃); confirms lime carbonation"),
-    PhaseWindow("Calcite", "C", 42.0, 44.0, "Major carbonation product (CaCO₃); confirms lime carbonation"),
-    PhaseWindow("Calcite", "C", 46.5, 48.5, "Major carbonation product (CaCO₃); confirms lime carbonation"),
-    PhaseWindow("Calcite", "C", 56.0, 58.0, "Major carbonation product (CaCO₃); confirms lime carbonation"),
-    PhaseWindow("Calcite", "C", 59.0, 61.0, "Major carbonation product (CaCO₃); confirms lime carbonation"),
-    PhaseWindow("Calcite", "C", 63.5, 65.5, "Major carbonation product (CaCO₃); confirms lime carbonation"),
-    PhaseWindow("Calcite", "C", 71.5, 75.5, "Major carbonation product (CaCO₃); confirms lime carbonation"),
+    PhaseWindow("Portlandite", "P", 18.0, 18.5, "Residual or unreacted lime"),
+    PhaseWindow("Calcite", "C", 22.5, 23.5, "Carbonated lime phase"),
+    PhaseWindow("Vaterite", "Vt", 24.5, 25.5, "Metastable calcium carbonate phase"),
+    PhaseWindow("Quartz", "Q", 25.5, 26.5, "Siliceous aggregate phase"),
+    PhaseWindow("Aragonite", "Ar", 26.0, 27.0, "Calcium carbonate polymorph"),
+    PhaseWindow("Calcite (major peak)", "C", 29.0, 30.0, "Dominant stable binder phase"),
+    PhaseWindow("Calcite / Aragonite", "C/A", 30.5, 31.5, "Carbonation-related phase"),
+    PhaseWindow("Vaterite", "Vt", 32.0, 33.0, "Intermediate carbonation product"),
+    PhaseWindow("Mullite", "M", 33.0, 34.0, "Aluminosilicate phase"),
+    PhaseWindow("Portlandite", "P", 34.0, 34.5, "Partial carbonation / lime residue"),
+    PhaseWindow("Aragonite", "Ar", 36.0, 37.0, "Secondary carbonate polymorph peak"),
+    PhaseWindow("Calcite", "C", 39.0, 40.5, "Stable crystalline lime phase"),
+    PhaseWindow("Mullite", "M", 40.0, 41.0, "Clay / pozzolanic contribution"),
+    PhaseWindow("Calcite", "C", 42.5, 43.5, "Lime mortar matrix confirmation"),
+    PhaseWindow("Mullite", "M", 45.0, 46.0, "Aluminosilicate contribution"),
+    PhaseWindow("Calcite / Quartz", "C+Q", 47.0, 48.5, "Binder–aggregate interaction"),
+    PhaseWindow("Vaterite", "Vt", 49.0, 50.0, "Minor metastable carbonate phase"),
+    PhaseWindow("Mullite", "M", 54.0, 55.0, "Secondary mullite peak"),
+    PhaseWindow("Calcite", "C", 56.0, 58.0, "Mature carbonation"),
+    PhaseWindow("Calcite", "C", 59.0, 61.0, "Crystalline stability"),
+    PhaseWindow("Mullite / Aragonite", "M+Ar", 60.0, 62.0, "Minor phase confirmation"),
+    PhaseWindow("Quartz / Silicates", "Q+S", 64.0, 66.0, "Aggregate phase"),
+    PhaseWindow("Calcite / Mullite", "C+M", 72.0, 75.0, "Minor crystalline phases"),
 )
 
 
@@ -92,7 +100,20 @@ def find_phase_hits(pattern: XRDPattern, *, min_prominence_frac: float = 0.004) 
     return hits
 
 
-_PHASE_ORDER = {"Portlandite": 0, "Mullite": 1, "Calcite": 2}
+_PHASE_ORDER = {
+    "Portlandite": 0,
+    "Quartz": 1,
+    "Mullite": 2,
+    "Calcite": 3,
+    "Calcite (major peak)": 4,
+    "Vaterite": 5,
+    "Aragonite": 6,
+    "Calcite / Aragonite": 7,
+    "Calcite / Quartz": 8,
+    "Mullite / Aragonite": 9,
+    "Quartz / Silicates": 10,
+    "Calcite / Mullite": 11,
+}
 
 
 def merge_xrd_phase_rows(hits_per_sample: list[list[PhaseHit]]) -> list[dict[str, str]]:
@@ -102,13 +123,13 @@ def merge_xrd_phase_rows(hits_per_sample: list[list[PhaseHit]]) -> list[dict[str
     """
     phase_to_deg: dict[str, set[float]] = {}
     phase_sym: dict[str, str] = {}
-    phase_sig: dict[str, str] = {}
+    phase_sig: dict[str, set[str]] = {}
 
     for hits in hits_per_sample:
         for h in hits:
             phase_to_deg.setdefault(h.phase, set()).add(round(h.two_theta_deg, 2))
             phase_sym[h.phase] = h.symbol
-            phase_sig[h.phase] = h.significance
+            phase_sig.setdefault(h.phase, set()).add(h.significance)
 
     def sort_key(p: str) -> tuple[int, str]:
         return (_PHASE_ORDER.get(p, 99), p)
@@ -117,12 +138,13 @@ def merge_xrd_phase_rows(hits_per_sample: list[list[PhaseHit]]) -> list[dict[str
     for phase in sorted(phase_to_deg.keys(), key=sort_key):
         degs = sorted(phase_to_deg[phase])
         deg_str = ", ".join(f"{d:.2f}" for d in degs)
+        sig_str = "; ".join(sorted(phase_sig.get(phase, set())))
         rows.append(
             {
                 "Phase": phase,
                 "Symbol": phase_sym.get(phase, "—"),
                 "2θ values (°)": deg_str,
-                "Phase significance": phase_sig.get(phase, ""),
+                "Phase significance": sig_str,
             }
         )
     return rows

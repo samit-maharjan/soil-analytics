@@ -1,4 +1,4 @@
-"""XRD upload: ASC / CSV 2θ vs intensity, stacked multi-sample plot, phase table (P / M / C)."""
+"""XRD upload: ASC / CSV 2θ vs intensity, stacked multi-sample plot, laboratory phase table."""
 
 from __future__ import annotations
 
@@ -15,7 +15,8 @@ st.set_page_config(page_title="XRD", layout="wide")
 st.title("XRD")
 st.caption(
     "Upload **ASC** (two-column 2θ vs intensity), **CSV**, or **TXT** tables. "
-    "Multiple files stack vertically with distinct colors; phase letters use literature 2θ windows (P / M / C)."
+    "Multiple files stack vertically with distinct colors; annotations use short codes for phases "
+    "matched to the laboratory 2θ windows (portlandite, carbonates, quartz, mullite, …)."
 )
 
 up = st.file_uploader(
@@ -64,8 +65,8 @@ html = build_html_report(
     [
         (
             "Summary",
-            "Qualitative labels from 2θ windows for Portlandite (P), Mullite (M), and Calcite (C); "
-            "not a substitute for full Rietveld or clay protocols.",
+            "Qualitative labels from the laboratory 2θ phase table (lime carbonation, aggregates, "
+            "aluminosilicates); not a substitute for full Rietveld or clay protocols.",
             None,
         )
     ],

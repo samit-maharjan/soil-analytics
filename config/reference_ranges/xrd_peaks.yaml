@@ -1,125 +1,174 @@
-# Diagnostic 2θ regions (Cu Kα ~1.5406 Å) — lime mortar / carbonated binders, brick powder (surkhi), and soil minerals.
+# Diagnostic 2θ regions (Cu Kα ~1.5406 Å) — lime mortar carbonation, aggregates, aluminosilicates.
 # Peaks are indicative; use full pattern, chemistry, and sample prep for identification.
-version: "0.1"
+version: "0.2"
 assumptions:
   radiation: "Cu Kα"
   wavelength_angstrom: 1.5406
   note: >-
-    Angles follow laboratory reference tables below plus common powder databases (e.g. ICDD PDF
-    patterns for calcite, portlandite). Mullite and quartz both contribute near ~26–27° 2θ;
-    resolve with profile fit or chemistry. d-spacings shift with solid solution and strain.
+    Angles follow the project laboratory phase table for lime-based binders and typical powder
+    databases (e.g. ICDD PDFs). Overlapping windows (e.g. quartz vs. aragonite near 26–27°) require
+    full-pattern interpretation. d-spacings shift with solid solution and strain.
 minerals:
   - id: portlandite_18
-    label: "Portlandite Ca(OH)₂ (~18° 2θ)"
-    two_theta_min: 17.3
-    two_theta_max: 18.7
-    source: "Laboratory phase table; powder patterns list strong portlandite reflections near ~18° and ~34° (Cu Kα)"
-    notes: "Residual lime; partial carbonation if present with calcite."
+    label: "Portlandite (18–18.5° 2θ)"
+    two_theta_min: 18.0
+    two_theta_max: 18.5
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Residual or unreacted lime."
 
-  - id: portlandite_34
-    label: "Portlandite Ca(OH)₂ (~34° 2θ)"
-    two_theta_min: 33.0
-    two_theta_max: 35.0
-    source: "Laboratory phase table; matches typical portlandite maxima in cement/lime XRD atlases"
-    notes: "Often strongest portlandite line; overlaps other phases only if broadened."
+  - id: calcite_22p5_23p5
+    label: "Calcite (22.5–23.5° 2θ)"
+    two_theta_min: 22.5
+    two_theta_max: 23.5
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Carbonated lime phase."
 
-  - id: mullite_16_17
-    label: "Mullite (16–17° 2θ region)"
-    two_theta_min: 15.5
-    two_theta_max: 17.5
-    source: "Laboratory phase table; mullite shows multiple low-angle reflections in fired-clay / brick materials"
-    notes: "Consistent with brick powder (surkhi) or aluminosilicate additives; not unique alone."
+  - id: vaterite_24p5_25p5
+    label: "Vaterite (24.5–25.5° 2θ)"
+    two_theta_min: 24.5
+    two_theta_max: 25.5
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Metastable calcium carbonate phase."
 
   - id: quartz_101
-    label: "Quartz (principal ~101 / α-quartz region)"
+    label: "Quartz (25.5–26.5° 2θ)"
+    two_theta_min: 25.5
+    two_theta_max: 26.5
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Siliceous aggregate phase."
+
+  - id: aragonite_26_27
+    label: "Aragonite (26–27° 2θ)"
     two_theta_min: 26.0
     two_theta_max: 27.0
-    source: "Powder diffraction handbooks; α-quartz strongest line commonly ~26.6° 2θ (Cu Kα)"
-    notes: "Sand aggregate; overlaps mullite features near 26–27° — use full pattern."
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Calcium carbonate polymorph."
 
-  - id: mullite_26_27
-    label: "Mullite (26–27° 2θ region)"
-    two_theta_min: 25.5
-    two_theta_max: 27.5
-    source: "Laboratory phase table; Rietveld / ceramic literature on mullite multiplets in this range"
-    notes: "Brick powder marker; interferes with quartz — deconvolve or use other mullite bands."
+  - id: calcite_major_29_30
+    label: "Calcite — major peak (29–30° 2θ)"
+    two_theta_min: 29.0
+    two_theta_max: 30.0
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Dominant stable binder phase."
+
+  - id: calcite_aragonite_30p5_31p5
+    label: "Calcite / Aragonite (30.5–31.5° 2θ)"
+    two_theta_min: 30.5
+    two_theta_max: 31.5
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Carbonation-related phase."
+
+  - id: vaterite_32_33
+    label: "Vaterite (32–33° 2θ)"
+    two_theta_min: 32.0
+    two_theta_max: 33.0
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Intermediate carbonation product."
+
+  - id: mullite_33_34
+    label: "Mullite (33–34° 2θ)"
+    two_theta_min: 33.0
+    two_theta_max: 34.0
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Aluminosilicate phase."
+
+  - id: portlandite_34
+    label: "Portlandite (34–34.5° 2θ)"
+    two_theta_min: 34.0
+    two_theta_max: 34.5
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Partial carbonation / lime residue."
+
+  - id: aragonite_36_37
+    label: "Aragonite (36–37° 2θ)"
+    two_theta_min: 36.0
+    two_theta_max: 37.0
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Secondary carbonate polymorph peak."
+
+  - id: calcite_39_40p5
+    label: "Calcite (39–40.5° 2θ)"
+    two_theta_min: 39.0
+    two_theta_max: 40.5
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Stable crystalline lime phase."
 
   - id: mullite_40_41
-    label: "Mullite (40–41° 2θ region)"
-    two_theta_min: 39.5
-    two_theta_max: 41.5
-    source: "Laboratory phase table; higher-angle mullite group"
-    notes: "Supports surkhi / fired-clay interpretation together with other mullite windows."
+    label: "Mullite (40–41° 2θ)"
+    two_theta_min: 40.0
+    two_theta_max: 41.0
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Clay / pozzolanic contribution."
 
-  - id: calcite_23
-    label: "Calcite CaCO₃ (~23° 2θ)"
-    two_theta_min: 22.0
-    two_theta_max: 24.0
-    source: "Laboratory phase table; ICDD calcite pattern includes reflections in the low-20s (Cu Kα)"
-    notes: "Carbonation product; distinguish from aragonite/vaterite by full pattern."
+  - id: calcite_42p5_43p5
+    label: "Calcite (42.5–43.5° 2θ)"
+    two_theta_min: 42.5
+    two_theta_max: 43.5
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Lime mortar matrix confirmation."
 
-  - id: calcite_104
-    label: "Calcite CaCO₃ (~29.4° 2θ, strongest)"
-    two_theta_min: 28.8
-    two_theta_max: 30.2
-    source: "Laboratory phase table (~29.4°); ICDD 01-076-0696 calcite (104) ~29.4° Cu Kα"
-    notes: "Usually most intense calcite peak; dolomite differs (e.g. 31° region)."
+  - id: mullite_45_46
+    label: "Mullite (45–46° 2θ)"
+    two_theta_min: 45.0
+    two_theta_max: 46.0
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Aluminosilicate contribution."
 
-  - id: calcite_31
-    label: "Calcite CaCO₃ (~31° 2θ)"
-    two_theta_min: 30.3
-    two_theta_max: 32.0
-    source: "Laboratory phase table; calcite secondary maxima in low-30s (Cu Kα)"
-    notes: "Confirms calcite with (104); watch overlap with dolomite if present."
+  - id: calcite_quartz_47_48p5
+    label: "Calcite / Quartz (47–48.5° 2θ)"
+    two_theta_min: 47.0
+    two_theta_max: 48.5
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Binder–aggregate interaction."
 
-  - id: calcite_39_40
-    label: "Calcite CaCO₃ (39–40° 2θ)"
-    two_theta_min: 38.5
-    two_theta_max: 40.5
-    source: "Laboratory phase table; calcite mid-range reflections (powder databases)"
-    notes: "Carbonation extent — use with low-angle calcite peaks."
+  - id: vaterite_49_50
+    label: "Vaterite (49–50° 2θ)"
+    two_theta_min: 49.0
+    two_theta_max: 50.0
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Minor metastable carbonate phase."
 
-  - id: calcite_43
-    label: "Calcite CaCO₃ (~43° 2θ)"
-    two_theta_min: 42.0
-    two_theta_max: 44.0
-    source: "Laboratory phase table; ICDD-style calcite pattern"
-    notes: "Higher-order calcite group."
+  - id: mullite_54_55
+    label: "Mullite (54–55° 2θ)"
+    two_theta_min: 54.0
+    two_theta_max: 55.0
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Secondary mullite peak."
 
-  - id: calcite_47_48
-    label: "Calcite CaCO₃ (47–48° 2θ)"
-    two_theta_min: 46.5
-    two_theta_max: 49.0
-    source: "Laboratory phase table; calcite reflections ~47–48° (Cu Kα)"
-    notes: "Useful at higher 2θ when baseline is flat."
-
-  - id: calcite_57
-    label: "Calcite CaCO₃ (~57° 2θ)"
+  - id: calcite_56_58
+    label: "Calcite (56–58° 2θ)"
     two_theta_min: 56.0
     two_theta_max: 58.0
-    source: "Laboratory phase table; high-angle calcite line"
-    notes: "Broader at small crystallite size."
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Mature carbonation."
 
-  - id: calcite_60
-    label: "Calcite CaCO₃ (~60° 2θ)"
+  - id: calcite_59_61
+    label: "Calcite (59–61° 2θ)"
     two_theta_min: 59.0
     two_theta_max: 61.0
-    source: "Laboratory phase table; high-angle calcite line"
-    notes: "Check for overlap with sample holder / fluorescence at very high angles."
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Crystalline stability."
 
-  - id: calcite_64_65
-    label: "Calcite CaCO₃ (64–65° 2θ)"
-    two_theta_min: 63.5
+  - id: mullite_aragonite_60_62
+    label: "Mullite / Aragonite (60–62° 2θ)"
+    two_theta_min: 60.0
+    two_theta_max: 62.0
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Minor phase confirmation."
+
+  - id: quartz_silicates_64_66
+    label: "Quartz / Silicates (64–66° 2θ)"
+    two_theta_min: 64.0
     two_theta_max: 66.0
-    source: "Laboratory phase table; high-angle calcite group"
-    notes: "Weak unless long counts."
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Aggregate phase."
 
-  - id: calcite_72_75
-    label: "Calcite CaCO₃ (72–75° 2θ)"
-    two_theta_min: 71.0
-    two_theta_max: 76.0
-    source: "Laboratory phase table; upper-range calcite reflections (Cu Kα)"
-    notes: "Often noisy; qualitative support only."
+  - id: calcite_mullite_72_75
+    label: "Calcite / Mullite (72–75° 2θ)"
+    two_theta_min: 72.0
+    two_theta_max: 75.0
+    source: "Laboratory phase table (lime mortar / carbonation)"
+    notes: "Minor crystalline phases."
 
   - id: kaolinite_001
     label: "Kaolinite basal ~7 Å (001)"
