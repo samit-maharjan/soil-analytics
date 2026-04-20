@@ -23,6 +23,8 @@ Rules:
 
 Previously this folder used a **`supervised/`** flat layout with CSV labels for ML training. That workflow was removed; rename **`supervised/` → `micrographs/`** and move qualitative write-ups into **analysis/** as described.
 
-## Upload lookup
+## Upload matching in the app
 
-In the FESEM app, you can upload a file. The app finds a catalog entry by **file basename** and, if the bytes match the micrograph on disk, treats the pair as verified and shows the analysis text.
+The FESEM page does **not** match uploads by file name. It compares the **appearance** of your upload to each catalog micrograph using a **perceptual hash** (pHash) and picks the **closest** image. The analysis text shown is whatever is paired on disk with that closest micrograph (true 1:1 between each on-disk image and its analysis file).
+
+Very different images can still produce a “best” match if the catalog is small—interpret distances accordingly.

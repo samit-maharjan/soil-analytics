@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-import hashlib
+import io
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
+
+import imagehash
+from PIL import Image, UnidentifiedImageError
 
 from soil_analytics.paths import fesem_supervised_data_dir
 
@@ -60,43 +64,91 @@ def load_fesem_catalog(data_root: Path | None = None) -> list[FesemPair]:
     return pairs
 
 
-def _sha256(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
+def phash_image_bytes(data: bytes) -> imagehash.ImageHash | None:
+    """Perceptual hash (pHash); ``None`` if the bytes are not a decodable image."""
+    try:
+        pil = Image.open(io.BytesIO(data))
+        pil.load()
+        return imagehash.phash(pil.convert("RGB"))
+    except (OSError, UnidentifiedImageError, ValueError):
+        return None
 
 
-def match_upload_to_catalog(
-    filename: str,
+def phash_image_path(path: Path) -> imagehash.ImageHash | None:
+    try:
+        with Image.open(path) as pil:
+            pil.load()
+            return imagehash.phash(pil.convert("RGB"))
+    except (OSError, UnidentifiedImageError, ValueError):
+        return None
+
+
+SimilarityStatus = Literal[
+    "similarity_match",
+    "similarity_no_catalog",
+    "similarity_unreadable_upload",
+    "similarity_unreadable_catalog_entry",
+    "similarity_no_analysis",
+]
+
+
+@dataclass(frozen=True)
+class SimilarityMatch:
+    """Best catalog row for an upload by minimum pHash Hamming distance."""
+
+    pair: FesemPair | None
+    hamming: int | None
+    hash_bits: int
+    status: SimilarityStatus
+
+
+def match_upload_by_image_similarity(
     file_bytes: bytes,
     data_root: Path | None = None,
-) -> tuple[FesemPair | None, str]:
+) -> SimilarityMatch:
     """
-    Match an upload to a catalog micrograph by **basename** (path segments ignored).
+    Map an uploaded micrograph to the **catalog micrograph with the most similar appearance**
+    (perceptual hash; lower Hamming distance = closer match).
 
-    Returns ``(pair, status)`` where status is:
-    - ``catalog_match_verified`` — on-disk file exists and bytes match
-    - ``catalog_match_name_only`` — same name on disk but content differs
-    - ``catalog_no_such_file`` — no micrographs/ file with that name
-    - ``catalog_no_analysis`` — file exists but no analysis text
+    Each on-disk micrograph still has a 1:1 pairing with its ``analysis/<stem>`` file; this
+    function chooses **which** micrograph the upload resembles, then returns that row’s analysis.
     """
     root = data_root if data_root is not None else fesem_supervised_data_dir()
-    safe_name = Path(filename).name
-    target = (root / "micrographs" / safe_name).resolve()
-    try:
-        target.relative_to((root / "micrographs").resolve())
-    except ValueError:
-        return None, "catalog_no_such_file"
-    if not target.is_file():
-        return None, "catalog_no_such_file"
-    on_disk = target.read_bytes()
-    pair_list = [p for p in load_fesem_catalog(root) if p.name == safe_name]
-    pair = pair_list[0] if pair_list else None
-    if pair is None:
-        return None, "catalog_no_such_file"
-    if _sha256(file_bytes) != _sha256(on_disk):
-        return pair, "catalog_match_name_only"
+    pairs = load_fesem_catalog(root)
+    if not pairs:
+        return SimilarityMatch(pair=None, hamming=None, hash_bits=64, status="similarity_no_catalog")
+
+    q = phash_image_bytes(file_bytes)
+    if q is None:
+        return SimilarityMatch(pair=None, hamming=None, hash_bits=64, status="similarity_unreadable_upload")
+
+    best: tuple[int, FesemPair] | None = None
+    for p in pairs:
+        h = phash_image_path(p.image_path)
+        if h is None:
+            continue
+        d = int(h - q)
+        if best is None or d < best[0]:
+            best = (d, p)
+
+    if best is None:
+        return SimilarityMatch(pair=None, hamming=None, hash_bits=64, status="similarity_unreadable_catalog_entry")
+
+    dist, pair = best
+    # pHash uses 8×8 = 64 bits (see ``imagehash.phash``).
+    bits = int(q.hash.size)
     if not (pair.analysis_text and str(pair.analysis_text).strip()):
-        return pair, "catalog_no_analysis"
-    return pair, "catalog_match_verified"
+        return SimilarityMatch(
+            pair=pair, hamming=dist, hash_bits=bits, status="similarity_no_analysis"
+        )
+    return SimilarityMatch(pair=pair, hamming=dist, hash_bits=bits, status="similarity_match")
+
+
+def hamming_similarity_fraction(hamming: int | None, hash_bits: int) -> float | None:
+    """Map Hamming distance to a simple similarity score in ``[0, 1]`` (1 = identical hash)."""
+    if hamming is None or hash_bits <= 0:
+        return None
+    return max(0.0, min(1.0, 1.0 - float(hamming) / float(hash_bits)))
 
 
 def catalog_summary_rows(pairs: list[FesemPair]) -> list[dict[str, str]]:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from io import BytesIO
 from pathlib import Path
 
 import pandas as pd
@@ -10,8 +11,9 @@ import yaml
 
 from soil_analytics.fesem_catalog import (
     catalog_summary_rows,
+    hamming_similarity_fraction,
     load_fesem_catalog,
-    match_upload_to_catalog,
+    match_upload_by_image_similarity,
 )
 from soil_analytics.paths import fesem_supervised_data_dir, project_root, reference_config_dir
 
@@ -20,7 +22,8 @@ st.title("FESEM")
 st.caption(
     "Phase morphology uses config YAML. Catalogued micrographs live under "
     "`data/fesem_supervised/micrographs/` with matching analysis text in `analysis/` "
-    "(same base name: e.g. `sample.png` ↔ `sample.txt`)."
+    "(same base name: e.g. `sample.png` ↔ `sample.txt`). "
+    "Uploads are mapped to that catalog **by image similarity** (perceptual hash), not file name."
 )
 
 _remarks_path = reference_config_dir() / "fesem_remarks.yaml"
@@ -94,36 +97,49 @@ else:
                 f"No analysis file — add `{data_root / 'analysis' / (sel.image_path.stem + '.txt')}`."
             )
 
-st.subheader("Upload lookup")
+st.subheader("Upload — map by image similarity")
 st.caption(
-    "Matches uploads to catalog micrographs **by file name**. "
-    "If the bytes match the file on disk, the paired analysis is shown as verified."
+    "Each catalog micrograph is still tied 1:1 to an analysis file on disk. "
+    "Your upload is compared **visually** to all catalog images; the **closest** match "
+    "(perceptual hash Hamming distance) selects which analysis to show."
 )
 up = st.file_uploader(
     "Micrograph file",
     type=["png", "jpg", "jpeg", "tif", "tiff"],
     key="fesem_upload",
 )
-if up and st.button("Look up in catalog", key="fesem_lookup"):
+if up and st.button("Find best matching catalog entry", key="fesem_sim"):
     raw = up.getvalue()
-    pair, status = match_upload_to_catalog(up.name, raw, data_root=data_root)
-    if status == "catalog_no_such_file":
-        st.error(f"No catalog micrograph named `{Path(up.name).name}`.")
-    elif status == "catalog_match_name_only":
-        st.warning(
-            "File name matches a catalog micrograph, but **file contents differ** from disk. "
-            "Showing the catalog entry for that name anyway."
-        )
-        if pair and pair.analysis_text:
-            st.markdown(pair.analysis_text)
-        elif pair:
-            st.warning("That micrograph has no analysis text yet.")
-    elif status == "catalog_no_analysis":
-        st.success("Catalog file matches on disk (verified).")
-        st.warning("No analysis text is linked for this micrograph.")
+    m = match_upload_by_image_similarity(raw, data_root=data_root)
+    if m.status == "similarity_no_catalog":
+        st.error("Catalog is empty — add micrographs under micrographs/.")
+    elif m.status == "similarity_unreadable_upload":
+        st.error("Could not decode the upload as an image.")
+    elif m.status == "similarity_unreadable_catalog_entry":
+        st.error("Catalog images could not be read for comparison.")
+    elif m.pair is None:
+        st.error("No match.")
     else:
-        st.success("Catalog file matches on disk (verified).")
-        if pair and pair.analysis_text:
-            st.markdown(pair.analysis_text)
+        sim = hamming_similarity_fraction(m.hamming, m.hash_bits)
+        if m.hamming is not None:
+            st.metric(
+                "Best-match Hamming distance (pHash)",
+                m.hamming,
+                help="Lower is more similar; 0 often means same or nearly identical appearance.",
+            )
+            if sim is not None:
+                st.caption(f"Approximate similarity score (from distance): **{sim:.2%}**")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.image(BytesIO(raw), caption="Your upload", use_container_width=True)
+        with col_b:
+            st.image(str(m.pair.image_path), caption=f"Closest catalog: {m.pair.name}", use_container_width=True)
+        if m.status == "similarity_no_analysis":
+            st.warning(
+                f"Closest catalog image is **{m.pair.name}**, but there is **no analysis text** "
+                f"for that entry yet."
+            )
+        else:
+            st.markdown(m.pair.analysis_text or "")
 
 st.markdown(f"Project root: `{project_root()}`")
