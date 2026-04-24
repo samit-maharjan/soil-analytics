@@ -1,145 +1,142 @@
-"""FESEM: qualitative morphology reference (YAML) and paired micrographs + analysis text."""
+"""FESEM: mineral phase / morphology table, MCQ questionnaire, and soil-structure interpretation."""
 
 from __future__ import annotations
 
-from io import BytesIO
-from pathlib import Path
-
-import pandas as pd
-import streamlit as st
 import yaml
+import streamlit as st
+import pandas as pd
 
-from soil_analytics.fesem_catalog import (
-    catalog_summary_rows,
-    hamming_similarity_fraction,
-    load_fesem_catalog,
-    match_upload_by_image_similarity,
-)
-from soil_analytics.paths import fesem_supervised_data_dir, project_root, reference_config_dir
+from soil_analytics.fesem_mcq import parse_phases, shuffled_mcq_labels
+from soil_analytics.paths import project_root, reference_config_dir
 
 st.set_page_config(page_title="FESEM", layout="wide")
-st.title("FESEM")
+st.title("Identification of mineral phases and morphology (FESEM)")
 st.caption(
-    "Phase morphology uses config YAML. Catalogued micrographs live under "
-    "`data/fesem_supervised/micrographs/` with matching analysis text in `analysis/` "
-    "(same base name: e.g. `sample.png` ↔ `sample.txt`). "
-    "Uploads are mapped to that catalog **by image similarity** (perceptual hash), not file name."
+    "Use the reference table, then answer the **shape → phase** questions. "
+    "Feedback links each correct association to what it **represents in the soil / microstructure**. "
+    "Nothing is stored on the server; export a text summary at the end."
 )
 
-_remarks_path = reference_config_dir() / "fesem_remarks.yaml"
-if _remarks_path.is_file():
-    with open(_remarks_path, encoding="utf-8") as f:
-        _fesem_ref = yaml.safe_load(f) or {}
-    _rows = _fesem_ref.get("phases", [])
-    if _rows:
-        with st.expander(
-            "Phase morphology reference (from config/reference_ranges/fesem_remarks.yaml)",
-            expanded=False,
-        ):
-            st.dataframe(
-                pd.DataFrame(
-                    [
-                        {
-                            "Phase": r.get("label", r.get("id", "")),
-                            "Formula": r.get("chemical_formula") or "—",
-                            "Morphology": r.get("morphology", ""),
-                            "Notes": r.get("notes", ""),
-                        }
-                        for r in _rows
-                    ]
-                ),
-                use_container_width=True,
-                hide_index=True,
-            )
+_ref = reference_config_dir() / "fesem_remarks.yaml"
+if not _ref.is_file():
+    st.error(f"Missing config: `{_ref}`")
+    st.stop()
 
-data_root_raw = st.text_input(
-    "Catalog root",
-    value=str(fesem_supervised_data_dir()),
-    key="fesem_data_root_input",
-    help="Must contain micrographs/ and optionally analysis/ with paired text files.",
-)
-try:
-    data_root = Path(data_root_raw).expanduser().resolve()
-except OSError:
-    data_root = fesem_supervised_data_dir()
+with open(_ref, encoding="utf-8") as f:
+    _doc = yaml.safe_load(f) or {}
+_rows = _doc.get("phases", [])
+_narr = _doc.get("interpretation_narrative") or {}
 
-pairs = load_fesem_catalog(data_root)
-st.markdown(
-    f"**micrographs:** `{data_root / 'micrographs'}`  \n"
-    f"**analysis:** `{data_root / 'analysis'}`"
+specs = parse_phases(_rows)
+if not specs:
+    st.error("No phases in `fesem_remarks.yaml`.")
+    st.stop()
+
+all_labels = [p.label for p in specs]
+
+# Optional bundled figure (table screenshot)
+_img = project_root() / "streamlit_app" / "assets" / "fesem_reference.png"
+if _img.is_file():
+    st.image(str(_img), use_container_width=True, caption="Reference: mineral phases, formulas, and typical morphologies")
+
+st.subheader("Table: identification of mineral phases and morphology (FESEM)")
+st.dataframe(
+    pd.DataFrame(
+        [
+            {
+                "Mineral phase": p.label,
+                "Chemical formula": p.chemical_formula or "—",
+                "Morphology / description": p.morphology,
+                "Context (from reference)": p.notes,
+            }
+            for p in specs
+        ]
+    ),
+    use_container_width=True,
+    hide_index=True,
 )
 
-if not pairs:
-    st.info(
-        "No micrographs found. Add images under **micrographs/** and optional "
-        "**analysis/<same-stem>.txt** or **.md** (see `data/fesem_supervised/README.md`)."
+with st.expander("What these parameters represent (process, properties, environment)", expanded=False):
+    st.markdown(
+        f"**Process indicators:**  \n{_narr.get('process_indicators', '—')}\n\n"
+        f"**Physical properties / microstructure:**  \n{_narr.get('physical_properties', '—')}\n\n"
+        f"**Environment / exposure:**  \n{_narr.get('environment', '—')}"
     )
-else:
-    st.subheader("Catalog")
-    st.dataframe(
-        pd.DataFrame(catalog_summary_rows(pairs)),
-        use_container_width=True,
-        hide_index=True,
-    )
-    labels = [p.name for p in pairs]
-    choice = st.selectbox("Open micrograph", options=labels, key="fesem_pick")
-    sel = next(p for p in pairs if p.name == choice)
-    c1, c2 = st.columns([1, 1])
-    with c1:
-        st.image(str(sel.image_path), caption=sel.name, use_container_width=True)
-    with c2:
-        if sel.analysis_text:
-            st.markdown(sel.analysis_text)
-        elif sel.analysis_path:
-            st.warning("Analysis file is empty.")
-        else:
-            st.warning(
-                f"No analysis file — add `{data_root / 'analysis' / (sel.image_path.stem + '.txt')}`."
-            )
 
-st.subheader("Upload — map by image similarity")
+st.subheader("Questionnaire: morphology → phase (MCQ)")
 st.caption(
-    "Each catalog micrograph is still tied 1:1 to an analysis file on disk. "
-    "Your upload is compared **visually** to all catalog images; the **closest** match "
-    "(perceptual hash Hamming distance) selects which analysis to show."
+    "For each **observed morphology** (as in the table), select the **mineral / phase** it best matches. "
+    "Then read the interpretation: what that association suggests in the **soil or material**."
 )
-up = st.file_uploader(
-    "Micrograph file",
-    type=["png", "jpg", "jpeg", "tif", "tiff"],
-    key="fesem_upload",
-)
-if up and st.button("Find best matching catalog entry", key="fesem_sim"):
-    raw = up.getvalue()
-    m = match_upload_by_image_similarity(raw, data_root=data_root)
-    if m.status == "similarity_no_catalog":
-        st.error("Catalog is empty — add micrographs under micrographs/.")
-    elif m.status == "similarity_unreadable_upload":
-        st.error("Could not decode the upload as an image.")
-    elif m.status == "similarity_unreadable_catalog_entry":
-        st.error("Catalog images could not be read for comparison.")
-    elif m.pair is None:
-        st.error("No match.")
-    else:
-        sim = hamming_similarity_fraction(m.hamming, m.hash_bits)
-        if m.hamming is not None:
-            st.metric(
-                "Best-match Hamming distance (pHash)",
-                m.hamming,
-                help="Lower is more similar; 0 often means same or nearly identical appearance.",
-            )
-            if sim is not None:
-                st.caption(f"Approximate similarity score (from distance): **{sim:.2%}**")
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.image(BytesIO(raw), caption="Your upload", use_container_width=True)
-        with col_b:
-            st.image(str(m.pair.image_path), caption=f"Closest catalog: {m.pair.name}", use_container_width=True)
-        if m.status == "similarity_no_analysis":
-            st.warning(
-                f"Closest catalog image is **{m.pair.name}**, but there is **no analysis text** "
-                f"for that entry yet."
-            )
-        else:
-            st.markdown(m.pair.analysis_text or "")
 
-st.markdown(f"Project root: `{project_root()}`")
+answers: dict[str, str] = {}
+with st.form("fesem_mcq_form", clear_on_submit=False):
+    for n, p in enumerate(specs, start=1):
+        opts = shuffled_mcq_labels(p.label, all_labels, phase_id=p.id)
+        st.markdown(f"**Question {n} of {len(specs)}**")
+        st.markdown(
+            f"Document this **appearance (shape / texture) in FESEM:**  \n*{p.morphology}*  \n\n"
+            "**Which mineral / phase in the table is most consistent with that morphology?**"
+        )
+        choice = st.radio(
+            "Choose one",
+            options=opts,
+            key=f"fe_mcq_{p.id}",
+            label_visibility="collapsed",
+        )
+        answers[p.id] = choice
+        st.divider()
+
+    col1, col2 = st.columns(2)
+    with col1:
+        sample_id = st.text_input("Sample / site ID (optional)", placeholder="e.g. S3-02b")
+    with col2:
+        extra = st.text_input("Run / image label (optional)", placeholder="e.g. micrograph_12")
+
+    submitted = st.form_submit_button("Score answers and show what it means for the soil / structure")
+
+if submitted:
+    correct_n = 0
+    lines: list[str] = [
+        "FESEM morphology → phase questionnaire",
+        f"Sample / run: {sample_id or '—'} / {extra or '—'}",
+        "",
+    ]
+    detail_blocks: list[str] = []
+
+    for p in specs:
+        chosen = answers.get(p.id, "")
+        ok = chosen == p.label
+        if ok:
+            correct_n += 1
+        short = p.morphology[:72] + ("…" if len(p.morphology) > 72 else "")
+        lines.append(
+            f"- Shape: “{short}” → table row **{p.label}** — "
+            f"{'✓' if ok else '✗'} (you chose: {chosen or '—'})"
+        )
+        detail_blocks.append(
+            f"**Row: {p.label}** (morphology you were shown: *{p.morphology}*)  \n"
+            f"- You selected: **{chosen or '—'}** — **{'Correct' if ok else 'Incorrect'}** "
+            f"(reference answer: **{p.label}**).  \n"
+            f"- **What this phase tends to represent in the soil / material:** {p.soil_interpretation}"
+        )
+
+    st.success(f"Score: **{correct_n} / {len(specs)}** correct (morphology ↔ phase).")
+    st.subheader("What your answers imply (per phase)")
+    for block in detail_blocks:
+        st.markdown(block)
+        st.markdown("---")
+
+    report = "\n".join(lines) + "\n\n— Per-phase soil / structure notes —\n"
+    for p in specs:
+        report += f"\n{p.label}:\n{p.soil_interpretation}\n"
+
+    st.code("\n".join(lines) + "\n", language="text")
+    st.download_button(
+        "Download report (.txt)",
+        data=report,
+        file_name="fesem_mcq_interpretation.txt",
+        mime="text/plain",
+    )
+
+st.caption(f"Config: `{_ref}` · Project: `{project_root()}`")

@@ -1,4 +1,4 @@
-"""Resolve project paths (config, models) from package or cwd."""
+"""Resolve project paths (config) from package or cwd."""
 
 from __future__ import annotations
 
@@ -25,20 +25,3 @@ def project_root() -> Path:
 
 def reference_config_dir() -> Path:
     return project_root() / "config" / "reference_ranges"
-
-
-def models_dir() -> Path:
-    return project_root() / "models"
-
-
-def fesem_supervised_data_dir() -> Path:
-    """Root for paired FESEM data: ``micrographs/`` and ``analysis/`` (see data/fesem_supervised/README.md)."""
-    return project_root() / "data" / "fesem_supervised"
-
-
-def fesem_micrographs_dir() -> Path:
-    return fesem_supervised_data_dir() / "micrographs"
-
-
-def fesem_analysis_dir() -> Path:
-    return fesem_supervised_data_dir() / "analysis"

@@ -9,12 +9,5 @@ env/
 dist/
 build/
 data/external/
-# Local FESEM catalog (micrographs + analysis) — keep README
-data/fesem_supervised/*
-!data/fesem_supervised/README.md
-models/*.pt
-models/*.pth
-models/*.json
-!models/README.md
 .DS_Store
 rt_data/

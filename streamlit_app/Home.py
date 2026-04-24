@@ -15,7 +15,7 @@ st.markdown(
 Use the sidebar to open **FTIR**, **XRD**, **TGA**, **FESEM**, or **About**.
 
 - **FTIR / XRD / TGA**: upload CSV, view plots, run literature-based range checks, download an HTML report.
-- **FESEM**: paired micrographs and qualitative analysis under `data/fesem_supervised/micrographs/` and `analysis/` (see that folder’s README).
+- **FESEM**: reference table, **morphology → phase MCQs**, and short **soil / microstructure interpretation** text; optional download; nothing is stored by the app.
 
 Run from the repository root: `streamlit run streamlit_app/Home.py`
 """

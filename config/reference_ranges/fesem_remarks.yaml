@@ -1,45 +1,61 @@
-# FESEM qualitative reference — typical morphologies and remarks for phases in cementitious / carbonated systems.
-# For expert interpretation alongside imaging conditions (accelerating voltage, coating, etc.).
-version: "0.1"
+# Reference: “Identification of mineral phases and morphology using FESEM” (carbonated / cementitious context).
+# soil_interpretation: what the phase tends to represent for microstructure and processes in the material/soil.
+version: "0.2"
 phases:
   - id: aragonite
     label: "Aragonite"
     chemical_formula: "CaCO₃"
     morphology: "Needle-like, fibrous, radiating clusters"
     notes: "Metastable polymorph formed during early carbonation."
+    soil_interpretation: "Signals active early-stage carbonation; a metastable CaCO₃ form before more stable polymorphs dominate."
 
   - id: vaterite
     label: "Vaterite"
     chemical_formula: "CaCO₃"
     morphology: "Spherical, globular, cauliflower-like clusters"
     notes: "Least stable polymorph; tends to transform toward calcite."
+    soil_interpretation: "Points to a less-mature, transforming CaCO₃ assemblage; often transient under changing conditions."
 
   - id: portlandite
     label: "Portlandite"
     chemical_formula: "Ca(OH)₂"
     morphology: "Hexagonal plate-like, layered or flaky crystals"
     notes: "Product of lime hydration."
+    soil_interpretation: "Indicates presence or residual of lime/hydration chemistry (Ca(OH)₂) alongside carbonation and binder reactions."
 
   - id: calcite
     label: "Calcite"
     chemical_formula: "CaCO₃"
     morphology: "Rhombohedral, blocky or angular crystals"
     notes: "Most stable polymorph; often dominant at later carbonation stages."
+    soil_interpretation: "Suggests advanced or long-run carbonation and a more stable CaCO₃-dominated assemblage; often associated with a denser, more consolidated texture."
 
   - id: csh
     label: "C–S–H (calcium silicate hydrate)"
     chemical_formula: null
     morphology: "Gel-like, fibrous or amorphous mass"
     notes: "No fixed stoichiometry; principal binding phase and strength contributor in Portland systems."
+    soil_interpretation: "Key binding phase: fibrous or gel-like masses strongly control cohesion, strength, and fine porosity in the microstructure."
 
   - id: ettringite
     label: "Ettringite"
     chemical_formula: "Ca₆Al₂(SO₄)₃(OH)₁₂·26H₂O"
     morphology: "Needle-like, slender crystals in bundles"
     notes: "Favored when alumina and sulfate are available; classic AFt phase."
+    soil_interpretation: "Reflects combined availability of aluminate and sulfate (AFt); can influence void filling and local expansion in the microstructure."
 
   - id: acc
     label: "ACC (amorphous calcium carbonate)"
     chemical_formula: "CaCO₃"
     morphology: "Irregular, shapeless, non-crystalline mass"
     notes: "Precursor to crystalline CaCO₃ polymorphs."
+    soil_interpretation: "A precursor, poorly ordered carbonate stage: often linked to very early carbonation or rapid precipitation before well-formed crystals appear."
+
+# Narrative (UI): process / property / environment framing used next to the questionnaire
+interpretation_narrative:
+  process_indicators: >
+    The presence and mix of these phases help describe ongoing **carbonation** and **hydration** and how the microstructure develops over time.
+  physical_properties: >
+    More **stable, crystalline** carbonate (e.g. well-developed **calcite**) is often associated with a **denser, more compact** matrix, while **amorphous** or **finely fibrous** phases (e.g. C–S–H, ACC) strongly influence **pore structure**, **bonding**, and **strength** at small scales.
+  environment: >
+    **Polymorph diversity** and texture can track **exposure** and how far reactions have run. **Humid** conditions often sustain more **open, porous, “breathable”** fine-scale textures; **drier** conditions can favor **tighter, more compact** arrangements as carbonates mature.
