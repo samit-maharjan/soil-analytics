@@ -11,3 +11,8 @@ def test_reference_config_exists() -> None:
 def test_fesem_remarks_config_exists() -> None:
     cfg = reference_config_dir() / "fesem_remarks.yaml"
     assert cfg.is_file(), f"Expected {cfg}"
+
+
+def test_fesem_wizard_config_exists() -> None:
+    cfg = reference_config_dir() / "fesem_wizard.yaml"
+    assert cfg.is_file(), f"Expected {cfg}"

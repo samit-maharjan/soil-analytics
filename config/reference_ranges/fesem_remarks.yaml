@@ -1,6 +1,6 @@
 # Reference: “Identification of mineral phases and morphology using FESEM” (carbonated / cementitious context).
 # soil_interpretation: what the phase tends to represent for microstructure and processes in the material/soil.
-version: "0.2"
+version: "0.1"
 phases:
   - id: aragonite
     label: "Aragonite"

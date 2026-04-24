@@ -1,15 +1,18 @@
 # Soil Analytics Platform
 
-A small **Streamlit** app for **soil and cementitious / carbonated material** workflows: you upload spectroscopy or thermal data, compare it to **reference ranges** from the literature, and (for **FESEM**) work through a **morphology ↔ phase** checklist driven by a YAML table—not by image or ML models. Reference data lives under `config/reference_ranges/`.
+A small **Streamlit** app for **soil and cementitious / carbonated material** workflows: you upload
+spectroscopy, diffraction, or thermal **exports**, compare them to **reference ranges** from the
+literature, and (for **FESEM**) follow a **progressive habit questionnaire** in YAML to suggest a
+likely phase—not by image or ML models. Reference data lives under `config/reference_ranges/`.
 
 ## What it does
 
 | Area | In the app |
 |------|------------|
-| **FTIR** | Upload a CSV, plot bands, run reference checks, download an **HTML** report. |
-| **XRD** | Same idea for diffraction data: upload CSV, plots, peak/phase checks from config, report export. |
-| **TGA** | Upload CSV, thermal curves, reference range checks, report export. |
-| **FESEM** | Shows a **mineral / morphology table** from `config/reference_ranges/fesem_remarks.yaml`, **multiple-choice** questions (shape/texture → phase), and short **soil / microstructure** notes. You can download a text summary; the app does **not** read micrograph files or use vision models. |
+| **FTIR** | Upload **.txt** spectrum files (e.g. JCAMP-style or two-column wavenumber vs y), run band checks, download an **HTML** report. |
+| **XRD** | Upload **.asc** 2θ–intensity, stacked plots, qualitative phase hints, **HTML** report. |
+| **TGA** | Upload **CSV** TG data, reference windows, **HTML** report. |
+| **FESEM** | Reference table plus **fesem_wizard.yaml** step flow to suggest a **mineral/phase** and a short **interpretation**; optional text download; the app does **not** read micrograph files. |
 
 The Python package in `src/soil_analytics/` contains parsers, path helpers, and the logic the UI calls.
 
@@ -59,5 +62,5 @@ From the **repository root** (the folder that contains `pyproject.toml` and `str
 
 - `streamlit_app/` — Streamlit entry (`Home.py`) and `pages/` for each technique
 - `src/soil_analytics/` — importable package used by the app
-- `config/reference_ranges/` — YAML ranges, bands, peaks, FESEM text
+- `config/reference_ranges/` — YAML ranges, bands, peaks, FESEM table, FESEM wizard flow
 - `tests/` — `pytest` tests

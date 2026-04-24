@@ -1,8 +1,7 @@
-"""FESEM morphology ↔ phase MCQs from YAML reference rows (no ML)."""
+"""FESEM: phase table rows from YAML (no ML)."""
 
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass
 
 
@@ -14,13 +13,6 @@ class PhaseSpec:
     morphology: str
     notes: str
     soil_interpretation: str
-
-
-def _stable_seed(phase_id: str) -> int:
-    h = 0
-    for c in phase_id:
-        h = (h * 31 + ord(c)) & 0x7FFFFFFF
-    return h or 1
 
 
 def parse_phases(yaml_block: list[dict]) -> list[PhaseSpec]:
@@ -43,16 +35,3 @@ def parse_phases(yaml_block: list[dict]) -> list[PhaseSpec]:
             )
         )
     return out
-
-
-def shuffled_mcq_labels(correct: str, all_labels: list[str], *, phase_id: str) -> list[str]:
-    """
-    One correct phase name plus three decoys, shuffled (reproducible for this phase_id).
-    """
-    others = [L for L in all_labels if L != correct]
-    r = random.Random(_stable_seed(phase_id + ":labels"))
-    k = min(3, len(others))
-    decoys = r.sample(others, k=k) if k else []
-    pool = [correct, *decoys]
-    r.shuffle(pool)
-    return pool

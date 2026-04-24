@@ -1,0 +1,74 @@
+# Progressive guide: `result` = phase id in fesem_remarks.yaml. Use `short` for 2×2 button text (q2_family).
+version: 1
+start: q1
+nodes:
+  q1:
+    title: "Main look of the view"
+    prompt: "At your magnification, what is most of the field? (Ignore a few outlier specks.)"
+    options:
+      - key: matrix
+        label: "Fine-grained, gel- or fibre-like matrix fills most of the view."
+        next: q1a
+      - key: isolated
+        label: "Mostly separate crystals or clumps on plainer, darker, or empty-looking background."
+        next: q2_family
+      - key: hazy
+        label: "Low contrast, hazy, smeared, or no sharp phase boundaries."
+        result: acc
+
+  q1a:
+    title: "Inside the matrix"
+    prompt: "Any clear direction (fibres, tangles, foils), or more uniform / cloud-like?"
+    options:
+      - key: directional
+        label: "Fibres, tangles, or network- or foil-like texture (directional)."
+        result: csh
+      - key: isotropic
+        label: "Lumpy, mottled, or cloud-like, no long-range direction."
+        result: acc
+
+  q2_family:
+    title: "Stand-out features"
+    prompt: "For the main separate particles, which class fits best? If two tie, pick the more common one."
+    options:
+      - key: carbon
+        short: "Carbonate (blocks, fans, rounds)"
+        label: "Carbonate habit: rhombs, needle/fan rosettes, or round clusters of tiny grains."
+        next: q2_carb
+      - key: port
+        short: "Stacked flat plates / steps"
+        label: "Flat, stacked steps or plate-like (e.g. portlandite-style)."
+        result: portlandite
+      - key: ettr
+        short: "Long, thin, parallel needles"
+        label: "Bunches of very long, very thin, parallel needles (e.g. AFt/ettringite type)."
+        result: ettringite
+      - key: lumpy
+        short: "Lumpy, unclear"
+        label: "Ill-defined, lumpy, or not easy to class—one more follow-up."
+        next: q2b
+
+  q2_carb:
+    title: "Which carbonate style?"
+    prompt: "Blocky, radiating needle fan, or round clusters of sub-grains?"
+    options:
+      - key: blocky
+        label: "Blocky, faceted, or stair-step / rhomb-like."
+        result: calcite
+      - key: fan
+        label: "Slim radiating or fan/urchin-like needles."
+        result: aragonite
+      - key: round
+        label: "Cauliflower, globular, or grape-like clumps of rounded pieces."
+        result: vaterite
+
+  q2b:
+    title: "Lumpy: nodules or smear?"
+    prompt: "Nodular or globular 3D relief, or a thin, flat, paste-like smear with no clear crystals?"
+    options:
+      - key: glob
+        label: "Some 3D bumps, nodules, or closed outlines—not only a flat smear."
+        result: vaterite
+      - key: smear
+        label: "Mostly a thin, paste- or smear-like layer with no clear 3D crystal outline."
+        result: acc

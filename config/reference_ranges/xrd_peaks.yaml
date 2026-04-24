@@ -1,6 +1,6 @@
 # Diagnostic 2θ regions (Cu Kα ~1.5406 Å) — lime mortar carbonation, aggregates, aluminosilicates.
 # Peaks are indicative; use full pattern, chemistry, and sample prep for identification.
-version: "0.2"
+version: "0.1"
 assumptions:
   radiation: "Cu Kα"
   wavelength_angstrom: 1.5406

@@ -1,6 +1,6 @@
-"""FESEM MCQ helpers."""
+"""FESEM phase table helpers."""
 
-from soil_analytics.fesem_mcq import parse_phases, shuffled_mcq_labels
+from soil_analytics.fesem_mcq import parse_phases
 
 
 def test_parse_phases_minimal() -> None:
@@ -18,10 +18,3 @@ def test_parse_phases_minimal() -> None:
     assert len(ps) == 1
     assert ps[0].label == "Alpha"
     assert ps[0].soil_interpretation == "soil line"
-
-
-def test_shuffled_mcq_four_options() -> None:
-    labels = ["A", "B", "C", "D", "E", "F", "G"]
-    opts = shuffled_mcq_labels("C", labels, phase_id="test-id")
-    assert len(set(opts)) == 4
-    assert "C" in opts

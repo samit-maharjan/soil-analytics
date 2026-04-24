@@ -113,6 +113,57 @@ def ftir_inference_rows(
     return rows
 
 
+def ftir_manual_wavenumber_rows(wavenumber_cm1: float, config_path: Path) -> list[dict[str, str]]:
+    """
+    For a user-entered wavenumber, return rows for any configured band that contains that value
+    (reference inference text from the band ``notes`` in ``ftir_bands.yaml``).
+    """
+    data = _load_yaml(config_path)
+    wn = float(wavenumber_cm1)
+    rows: list[dict[str, str]] = []
+    for band in data.get("bands", []):
+        lo, hi = float(band["wavenumber_min"]), float(band["wavenumber_max"])
+        if lo <= wn <= hi:
+            notes = (band.get("notes") or "").strip() or "—"
+            rows.append(
+                {
+                    "Band": str(band.get("label", band.get("id", "—"))),
+                    "Wavenumber range (cm⁻¹)": f"{lo:g}–{hi:g}",
+                    "Value (cm⁻¹)": f"{wn:.1f}",
+                    "Inference": notes,
+                }
+            )
+    if not rows:
+        return [
+            {
+                "Result": f"No reference band in the list contains {wn:.1f} cm⁻¹. "
+                "Try another value, or use the file upload to scan extrema per window.",
+            }
+        ]
+    return rows
+
+
+def tga_window_manual_row(
+    window: dict,
+    user_delta_tg: float,
+) -> list[dict[str, str]]:
+    """
+    One row: reference temperature range + label, user-provided ΔTG, and the window ``notes`` as
+    inference text. ``window`` is a dict from ``tga_windows.yaml`` (``windows`` list item).
+    """
+    lo, hi = float(window["temp_min_c"]), float(window["temp_max_c"])
+    label = str(window.get("label", "—"))
+    inf = " ".join(str(window.get("notes", "") or "").split())
+    return [
+        {
+            "Range (°C)": f"{lo:g}–{hi:g}",
+            "Phase / compound (reference)": label,
+            "Your ΔTG (as entered)": f"{user_delta_tg:.6f}",
+            "Inference (reference)": inf or "—",
+        }
+    ]
+
+
 def ftir_merged_inference_rows(results_per_sample: list[list[CheckResult]]) -> list[dict[str, str]]:
     """
     One row per band across all samples: peak wavenumbers as comma-separated values (sample order
@@ -141,8 +192,8 @@ def ftir_merged_inference_rows(results_per_sample: list[list[CheckResult]]) -> l
         inference = notes if notes else r0.message
         rows.append(
             {
-                "Band": r0.label,
                 "Peak wavenumber (cm⁻¹)": peak_str,
+                "Band": r0.label,
                 "Inference": inference,
             }
         )

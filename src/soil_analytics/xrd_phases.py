@@ -100,6 +100,34 @@ def find_phase_hits(pattern: XRDPattern, *, min_prominence_frac: float = 0.004) 
     return hits
 
 
+def xrd_manual_two_theta_rows(two_theta_deg: float) -> list[dict[str, str]]:
+    """
+    For a user-entered 2θ (degrees), return reference rows for every **laboratory window** that
+    contains that value (``XRD_PHASE_WINDOWS``).
+    """
+    tt = float(two_theta_deg)
+    out: list[dict[str, str]] = []
+    for w in XRD_PHASE_WINDOWS:
+        if w.tt_lo <= tt <= w.tt_hi:
+            out.append(
+                {
+                    "Phase": w.phase,
+                    "Symbol": w.symbol,
+                    "2θ range (°)": f"{w.tt_lo:.1f}–{w.tt_hi:.1f}",
+                    "Your 2θ (°)": f"{tt:.2f}",
+                    "Reference note": w.significance,
+                }
+            )
+    if not out:
+        return [
+            {
+                "Result": f"No 2θ window in the current lab table includes {tt:.2f}°. "
+                "Widen the value or use a full scan to match maxima in windows."
+            }
+        ]
+    return out
+
+
 _PHASE_ORDER = {
     "Portlandite": 0,
     "Quartz": 1,

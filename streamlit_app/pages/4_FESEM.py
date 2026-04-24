@@ -1,137 +1,153 @@
-"""FESEM: table + MCQs from ``fesem_remarks.yaml`` only (no image file, no vision/ML)."""
+"""FESEM: reference table and progressive phase guide (YAML; no image / ML)."""
 
 from __future__ import annotations
 
 import yaml
 import streamlit as st
-import pandas as pd
 
-from soil_analytics.fesem_mcq import parse_phases, shuffled_mcq_labels
-from soil_analytics.paths import project_root, reference_config_dir
+from soil_analytics.fesem_mcq import parse_phases
+from soil_analytics.fesem_wizard import find_option, load_wizard, WizardNode
+from soil_analytics.paths import reference_config_dir
+from soil_analytics.streamlit_readability import inject_readability_css
+from soil_analytics.streamlit_tables import scrollable_dataframe
+
+REF = reference_config_dir() / "fesem_remarks.yaml"
+WIZ = reference_config_dir() / "fesem_wizard.yaml"
+_WIZ_MAX_STEPS = 5
 
 st.set_page_config(page_title="FESEM", layout="wide")
-st.title("Identification of mineral phases and morphology (FESEM)")
-st.caption(
-    "Use the reference table, then answer the **shape → phase** questions. "
-    "Feedback links each correct association to what it **represents in the soil / microstructure**. "
-    "Nothing is stored on the server; export a text summary at the end."
-)
+inject_readability_css(emphasize_radio=True)
+st.title("Mineral phase guide (FESEM)")
 
-_ref = reference_config_dir() / "fesem_remarks.yaml"
-if not _ref.is_file():
-    st.error(f"Missing config: `{_ref}`")
+if not REF.is_file() or not WIZ.is_file():
+    st.error("Missing `fesem_remarks.yaml` and/or `fesem_wizard.yaml` in `config/reference_ranges/`.")
     st.stop()
 
-with open(_ref, encoding="utf-8") as f:
-    _doc = yaml.safe_load(f) or {}
-_rows = _doc.get("phases", [])
-_narr = _doc.get("interpretation_narrative") or {}
-
-specs = parse_phases(_rows)
-if not specs:
+with open(REF, encoding="utf-8") as f:
+    fesem_doc = yaml.safe_load(f) or {}
+WIZARD = load_wizard(WIZ)
+narr = fesem_doc.get("interpretation_narrative") or {}
+phase_list = parse_phases(fesem_doc.get("phases", []))
+if not phase_list:
     st.error("No phases in `fesem_remarks.yaml`.")
     st.stop()
+by_id = {p.id: p for p in phase_list}
 
-all_labels = [p.label for p in specs]
 
-st.subheader("Table: identification of mineral phases and morphology (FESEM)")
-st.dataframe(
-    pd.DataFrame(
-        [
-            {
-                "Mineral phase": p.label,
-                "Chemical formula": p.chemical_formula or "—",
-                "Morphology / description": p.morphology,
-                "Context (from reference)": p.notes,
-            }
-            for p in specs
-        ]
-    ),
-    use_container_width=True,
-    hide_index=True,
-)
+def apply_path() -> tuple[str | None, str | None, list[tuple[WizardNode, str]]]:
+    steps: list[dict] = st.session_state.get("fe_steps", [])
+    nid: str = WIZARD.start
+    trail: list[tuple[WizardNode, str]] = []
+    for stp in steps:
+        node = WIZARD.nodes.get(nid)
+        if not node:
+            return None, None, trail
+        o = find_option(node, str(stp.get("key", "")))
+        if not o:
+            return None, None, trail
+        trail.append((node, o.label))
+        if o.result:
+            return None, o.result, trail
+        if o.next:
+            nid = o.next
+    return nid, None, trail
 
-with st.expander("What these parameters represent (process, properties, environment)", expanded=False):
-    st.markdown(
-        f"**Process indicators:**  \n{_narr.get('process_indicators', '—')}\n\n"
-        f"**Physical properties / microstructure:**  \n{_narr.get('physical_properties', '—')}\n\n"
-        f"**Environment / exposure:**  \n{_narr.get('environment', '—')}"
-    )
 
-st.subheader("Questionnaire: morphology → phase (MCQ)")
+if "fe_steps" not in st.session_state:
+    st.session_state.fe_steps = []
+st.session_state.pop("fe_field", None)
+
 st.caption(
-    "For each **observed morphology** (as in the table), select the **mineral / phase** it best matches. "
-    "Then read the interpretation: what that association suggests in the **soil or material**."
+    "One step at a time. You get a **suggested** phase and a short line from the reference list—not a substitute for expert ID."
 )
+st.divider()
 
-answers: dict[str, str] = {}
-with st.form("fesem_mcq_form", clear_on_submit=False):
-    for n, p in enumerate(specs, start=1):
-        opts = shuffled_mcq_labels(p.label, all_labels, phase_id=p.id)
-        st.markdown(f"**Question {n} of {len(specs)}**")
-        st.markdown(
-            f"Document this **appearance (shape / texture) in FESEM:**  \n*{p.morphology}*  \n\n"
-            "**Which mineral / phase in the table is most consistent with that morphology?**"
-        )
-        choice = st.radio(
-            "Choose one",
-            options=opts,
-            key=f"fe_mcq_{p.id}",
-            label_visibility="collapsed",
-        )
-        answers[p.id] = choice
-        st.divider()
+cur, phase_id, _ = apply_path()
 
-    col1, col2 = st.columns(2)
-    with col1:
-        sample_id = st.text_input("Sample / site ID (optional)", placeholder="e.g. S3-02b")
-    with col2:
-        extra = st.text_input("Run / image label (optional)", placeholder="e.g. micrograph_12")
-
-    submitted = st.form_submit_button("Score answers and show what it means for the soil / structure")
-
-if submitted:
-    correct_n = 0
-    lines: list[str] = [
-        "FESEM morphology → phase questionnaire",
-        f"Sample / run: {sample_id or '—'} / {extra or '—'}",
-        "",
-    ]
-    detail_blocks: list[str] = []
-
-    for p in specs:
-        chosen = answers.get(p.id, "")
-        ok = chosen == p.label
-        if ok:
-            correct_n += 1
-        short = p.morphology[:72] + ("…" if len(p.morphology) > 72 else "")
-        lines.append(
-            f"- Shape: “{short}” → table row **{p.label}** — "
-            f"{'✓' if ok else '✗'} (you chose: {chosen or '—'})"
-        )
-        detail_blocks.append(
-            f"**Row: {p.label}** (morphology you were shown: *{p.morphology}*)  \n"
-            f"- You selected: **{chosen or '—'}** — **{'Correct' if ok else 'Incorrect'}** "
-            f"(reference answer: **{p.label}**).  \n"
-            f"- **What this phase tends to represent in the soil / material:** {p.soil_interpretation}"
-        )
-
-    st.success(f"Score: **{correct_n} / {len(specs)}** correct (morphology ↔ phase).")
-    st.subheader("What your answers imply (per phase)")
-    for block in detail_blocks:
-        st.markdown(block)
-        st.markdown("---")
-
-    report = "\n".join(lines) + "\n\n— Per-phase soil / structure notes —\n"
-    for p in specs:
-        report += f"\n{p.label}:\n{p.soil_interpretation}\n"
-
-    st.code("\n".join(lines) + "\n", language="text")
-    st.download_button(
-        "Download report (.txt)",
-        data=report,
-        file_name="fesem_mcq_interpretation.txt",
-        mime="text/plain",
+if phase_id and phase_id in by_id:
+    p = by_id[phase_id]
+    st.subheader("Suggested match")
+    st.markdown(
+        f"**{p.label}**  \n{p.chemical_formula or '—'}  \n\n**Typical appearance (reference)**  \n{p.morphology}  \n\n"
+        f"**Interpretation (reference)**  \n{p.soil_interpretation}"
     )
+    b1, b2, _ = st.columns([0.32, 0.32, 0.36])
+    with b1:
+        if st.button("Back one step", key="fe_bk"):
+            st.session_state.fe_steps = st.session_state.fe_steps[:-1]
+            st.rerun()
+    with b2:
+        if st.button("Start over", type="primary", key="fe_re"):
+            st.session_state.fe_steps = []
+            st.rerun()
 
-st.caption(f"Config: `{_ref}` · Project: `{project_root()}`")
+elif cur is None and not phase_id:
+    st.error("The path is invalid. Reset to start over.")
+    if st.button("Reset", key="fe_rez0"):
+        st.session_state.fe_steps = []
+        st.rerun()
+
+elif cur is None and phase_id and phase_id not in by_id:
+    st.error(f"Unknown result id: {phase_id!r}.")
+    if st.button("Reset", key="fe_rez1"):
+        st.session_state.fe_steps = []
+        st.rerun()
+
+elif cur is not None:
+    node = WIZARD.nodes[cur]
+    step_idx = len(st.session_state.fe_steps) + 1
+    st.progress(min(1.0, (step_idx - 1) / float(_WIZ_MAX_STEPS)))
+    st.markdown("")
+
+    st.markdown(f"### Step {step_idx} — {node.title}")
+    st.markdown(node.prompt)
+    st.markdown("  \n  ")
+
+    cands = [o for o in node.options if o.key and o.label]
+    if not cands:
+        st.error("Invalid node (no options) in the wizard file.")
+        st.stop()
+
+    wk = f"w_{node.id}_q{len(st.session_state.fe_steps)}"
+    ch = st.radio(
+        "Options",
+        options=cands,
+        format_func=lambda o: o.label,
+        key=wk,
+        label_visibility="collapsed",
+    )
+    st.markdown("  \n  ")
+
+    b1, b2, _rest = st.columns([0.2, 0.2, 0.6])
+    with b1:
+        if st.button("Back", disabled=not st.session_state.fe_steps, key="fe_p"):
+            st.session_state.fe_steps = st.session_state.fe_steps[:-1]
+            st.rerun()
+    with b2:
+        nxt = st.button("Next", type="primary", key="fe_n")
+    if nxt:
+        st.session_state.fe_steps = [
+            *st.session_state.fe_steps,
+            {"node": cur, "key": ch.key},
+        ]
+        st.rerun()
+
+st.divider()
+st.subheader("Reference: phases and typical look")
+scrollable_dataframe(
+    [
+        {
+            "Mineral": p.label,
+            "Formula": p.chemical_formula or "—",
+            "Typical look": p.morphology,
+            "Note": p.notes,
+        }
+        for p in phase_list
+    ],
+)
+with st.expander("Context: process, structure, and environment (qualitative)", expanded=False):
+    st.markdown(
+        f"**Process**  \n{narr.get('process_indicators', '—')}\n\n"
+        f"**Structure**  \n{narr.get('physical_properties', '—')}\n\n"
+        f"**Environment**  \n{narr.get('environment', '—')}"
+    )
