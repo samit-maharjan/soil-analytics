@@ -1,13 +1,19 @@
+# Python
 __pycache__/
 *.py[cod]
-.pytest_cache/
-.venv/
-venv/
-.python-version
-env/
 *.egg-info/
 dist/
 build/
-data/external/
+
+# Environments
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# Test / IDE
+.pytest_cache/
+
+# OS
 .DS_Store
-rt_data/
