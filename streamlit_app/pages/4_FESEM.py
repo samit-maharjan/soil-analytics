@@ -1,4 +1,4 @@
-"""FESEM: mineral phase / morphology table, MCQ questionnaire, and soil-structure interpretation."""
+"""FESEM: table + MCQs from ``fesem_remarks.yaml`` only (no image file, no vision/ML)."""
 
 from __future__ import annotations
 
@@ -33,11 +33,6 @@ if not specs:
     st.stop()
 
 all_labels = [p.label for p in specs]
-
-# Optional bundled figure (table screenshot)
-_img = project_root() / "streamlit_app" / "assets" / "fesem_reference.png"
-if _img.is_file():
-    st.image(str(_img), use_container_width=True, caption="Reference: mineral phases, formulas, and typical morphologies")
 
 st.subheader("Table: identification of mineral phases and morphology (FESEM)")
 st.dataframe(
