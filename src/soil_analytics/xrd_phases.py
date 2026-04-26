@@ -1,4 +1,4 @@
-"""XRD phase matching to literature 2θ windows for stacked plots and phase summary tables."""
+"""XRD phase matching to literature 2θ windows for plots and phase summary tables."""
 
 from __future__ import annotations
 

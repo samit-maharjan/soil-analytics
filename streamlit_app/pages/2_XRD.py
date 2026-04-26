@@ -1,4 +1,4 @@
-"""XRD upload: ASC 2θ vs intensity, stacked plot, phase hints from 2θ windows."""
+"""XRD upload: ASC 2θ vs intensity, offset multi-file plot, phase hints from 2θ windows."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 
 from soil_analytics.parsers import parse_xrd_bytes
-from soil_analytics.plots import figure_to_embed_html, plot_xrd_stacked
+from soil_analytics.plots import figure_to_embed_html, plot_xrd_multi
 from soil_analytics.schemas import XRDPattern
 from soil_analytics.report import build_html_report
 from soil_analytics.xrd_phases import find_phase_hits, merge_xrd_phase_rows, xrd_manual_two_theta_rows
@@ -20,7 +20,7 @@ st.markdown(
     """
 **X-ray diffraction (XRD):** 2θ vs **intensity**. Maxima in reference 2θ windows are matched for **qualitative** comments.
 
-Use **manual 2θ** below, or **upload `.asc`** (two columns) for stacked patterns.
+Use **manual 2θ** below, or **upload `.asc`** (two columns) for one or more patterns.
 """
 )
 st.divider()
@@ -63,16 +63,16 @@ if not parsed:
     st.warning("No files could be parsed. Check two columns 2θ and y.")
     st.stop()
 
-st.subheader("Stacked pattern")
+st.subheader("2θ – intensity")
 labels = [n for n, _ in parsed]
 patterns = [p for _, p in parsed]
 hits_per = [find_phase_hits(p) for p in patterns]
 multi = len(parsed) > 1
-fig = plot_xrd_stacked(
+fig = plot_xrd_multi(
     patterns,
     labels,
     hits_per,
-    title="XRD (stacked)" if multi else labels[0],
+    title="XRD" if multi else labels[0],
 )
 plot_html = figure_to_embed_html(fig)
 st.pyplot(fig)

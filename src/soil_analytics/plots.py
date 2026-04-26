@@ -92,14 +92,42 @@ def plot_xrd(pattern: XRDPattern) -> Figure:
     return fig
 
 
-def plot_xrd_stacked(
+# If two window maxima are within this (2θ, °), treat as one peak: one multiline label at the summit.
+_XRD_SAME_PEAK_MAX_GAP_DEG = 0.5
+
+
+def _xrd_cluster_hits_by_neighboring_maxima(
+    pat_hits: list[PhaseHit], tt: np.ndarray
+) -> list[list[PhaseHit]]:
+    """Group hits that land on the same (or immediately neighboring) 2θ maximum in sorted order."""
+    if not pat_hits:
+        return []
+    with_idx: list[tuple[PhaseHit, int, float]] = []
+    for h in pat_hits:
+        idx = int(np.argmin(np.abs(tt - h.two_theta_deg)))
+        with_idx.append((h, idx, float(tt[idx])))
+    with_idx.sort(key=lambda t: t[2])
+    clusters: list[list[tuple[PhaseHit, int, float]]] = []
+    cur: list[tuple[PhaseHit, int, float]] = [with_idx[0]]
+    for item in with_idx[1:]:
+        ttp = item[2]
+        if ttp - cur[-1][2] <= _XRD_SAME_PEAK_MAX_GAP_DEG:
+            cur.append(item)
+        else:
+            clusters.append(cur)
+            cur = [item]
+    clusters.append(cur)
+    return [[h for h, _, _ in c] for c in clusters]
+
+
+def plot_xrd_multi(
     patterns: list[XRDPattern],
     labels: list[str],
     hits_per_pattern: list[list[PhaseHit]],
     *,
     title: str | None = None,
 ) -> Figure:
-    """Vertically stacked traces (offset intensity) with short phase-code annotations at matched peaks."""
+    """Offset vertical layout for several patterns; labels at each maximum, merged per peak (full symbols, e.g. M+Ar)."""
     if not patterns:
         raise ValueError("patterns must not be empty")
     if len(labels) != len(patterns) or len(hits_per_pattern) != len(patterns):
@@ -124,20 +152,40 @@ def plot_xrd_stacked(
         color = fixed[i] if i < len(fixed) else f"C{i}"
         ax.plot(tt, y_plot, color=color, lw=0.9, label=labels[i])
 
-        for h in hits_per_pattern[i]:
-            idx = int(np.argmin(np.abs(tt - h.two_theta_deg)))
-            y_peak = float(y_plot[idx])
+        pat_hits = hits_per_pattern[i]
+        for group in _xrd_cluster_hits_by_neighboring_maxima(pat_hits, tt):
+            group = sorted(group, key=lambda h: (h.two_theta_deg, h.symbol))
+            idxs: set[int] = set()
+            for h in group:
+                j = int(np.argmin(np.abs(tt - h.two_theta_deg)))
+                idxs.add(j)
+            best_idx = max(idxs, key=lambda j: float(y_plot[j]))
+            seen: set[str] = set()
+            lines: list[str] = []
+            for h in group:
+                s = h.symbol
+                if not s or s in seen:
+                    continue
+                seen.add(s)
+                lines.append(s)
+            if not lines:
+                continue
+            label = "\n".join(lines) if len(lines) > 1 else lines[0]
+            x_p = float(tt[best_idx])
+            y_p = float(y_plot[best_idx])
             ax.annotate(
-                h.symbol,
-                xy=(h.two_theta_deg, y_peak),
-                xytext=(0, 8),
+                label,
+                xy=(x_p, y_p),
+                xytext=(0, 11),
                 textcoords="offset points",
                 ha="center",
-                fontsize=9,
+                va="bottom",
+                fontsize=8,
                 color=color,
+                linespacing=1.2,
             )
 
-    ax.set_title(title or ("XRD (stacked)" if len(patterns) > 1 else (labels[0] if labels else "XRD")))
+    ax.set_title(title or (labels[0] if (len(patterns) == 1 and labels) else "XRD"))
     ax.set_xlabel("2θ (degrees)")
     ax.set_ylabel("Intensity (a.u.)")
     ax.set_xlim(10.0, 80.0)

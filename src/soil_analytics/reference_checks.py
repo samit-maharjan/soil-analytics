@@ -143,6 +143,18 @@ def ftir_manual_wavenumber_rows(wavenumber_cm1: float, config_path: Path) -> lis
     return rows
 
 
+def tga_range_display_str(window: dict) -> str:
+    """
+    User-facing range text for TGA windows. If ``range_label`` is set in the YAML (e.g. ``<120``,
+    ``120–250``), it is used; otherwise ``temp_min_c``/``temp_max_c`` is formatted.
+    """
+    rlab = (window.get("range_label") or "").strip()
+    if rlab:
+        return rlab
+    lo, hi = float(window["temp_min_c"]), float(window["temp_max_c"])
+    return f"{lo:g}–{hi:g}"
+
+
 def tga_window_manual_row(
     window: dict,
     user_delta_tg: float,
@@ -151,12 +163,11 @@ def tga_window_manual_row(
     One row: reference temperature range + label, user-provided ΔTG, and the window ``notes`` as
     inference text. ``window`` is a dict from ``tga_windows.yaml`` (``windows`` list item).
     """
-    lo, hi = float(window["temp_min_c"]), float(window["temp_max_c"])
     label = str(window.get("label", "—"))
     inf = " ".join(str(window.get("notes", "") or "").split())
     return [
         {
-            "Range (°C)": f"{lo:g}–{hi:g}",
+            "Range (°C)": tga_range_display_str(window),
             "Phase / compound (reference)": label,
             "Your ΔTG (as entered)": f"{user_delta_tg:.6f}",
             "Inference (reference)": inf or "—",

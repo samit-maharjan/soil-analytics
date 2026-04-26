@@ -10,7 +10,7 @@ likely phase—not by image or ML models. Reference data lives under `config/ref
 | Area | In the app |
 |------|------------|
 | **FTIR** | Upload **.txt** spectrum files (e.g. JCAMP-style or two-column wavenumber vs y), run band checks, download an **HTML** report. |
-| **XRD** | Upload **.asc** 2θ–intensity, stacked plots, qualitative phase hints, **HTML** report. |
+| **XRD** | Upload **.asc** 2θ–intensity, multi-file overlay, qualitative phase hints, **HTML** report. |
 | **TGA** | Upload **CSV** TG data, reference windows, **HTML** report. |
 | **FESEM** | Reference table plus **fesem_wizard.yaml** step flow to suggest a **mineral/phase** and a short **interpretation**; optional text download; the app does **not** read micrograph files. |
 

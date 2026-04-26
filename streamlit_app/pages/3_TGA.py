@@ -10,7 +10,7 @@ import yaml
 from soil_analytics.parsers import parse_tga_csv
 from soil_analytics.paths import reference_config_dir
 from soil_analytics.plots import figure_to_embed_html, plot_tga_multi_reference, tga_mass_at_temp
-from soil_analytics.reference_checks import tga_window_manual_row
+from soil_analytics.reference_checks import tga_range_display_str, tga_window_manual_row
 from soil_analytics.report import build_html_report
 from soil_analytics.streamlit_readability import inject_readability_css
 from soil_analytics.streamlit_tables import scrollable_dataframe
@@ -35,9 +35,9 @@ windows: list = list(tga_cfg.get("windows", []))
 
 # Labels for selectbox: unique display strings
 def _win_label(i: int, w: dict) -> str:
-    lo, hi = float(w["temp_min_c"]), float(w["temp_max_c"])
+    r = tga_range_display_str(w)
     lab = (w.get("label") or w.get("id") or "—")[:72]
-    return f"{i + 1}. {lo:g}–{hi:g} °C — {lab}"
+    return f"{i + 1}. {r} °C — {lab}"
 
 
 st.subheader("Manual range and ΔTG")
@@ -105,7 +105,7 @@ for c in curves:
         notes = win.get("notes") or ""
         summary_rows.append(
             {
-                "Range (°C)": f"{lo:g}–{hi:g}",
+                "Range (°C)": tga_range_display_str(win),
                 "Phase / compound": win.get("label", ""),
                 "ΔTG (% pts)": round(delta, 4),
                 "Inference (reference)": " ".join(str(notes).split()),

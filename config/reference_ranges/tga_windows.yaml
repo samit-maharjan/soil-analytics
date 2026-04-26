@@ -1,51 +1,57 @@
 # Temperature windows for comparative mass-loss steps — lime-based binders, carbonated systems, and related soils.
-# Windows follow reference tables up to 850 °C; interpretation is method-sensitive (atmosphere, rate, crucible, sample mass).
-version: "0.1"
+# Four-band scheme aligned with tabulated mass-loss by range (e.g. <120, 120–250, 250–550, 550–850 °C)
+# and reporting up to 850 °C; interpretation is method-sensitive (atmosphere, rate, crucible, sample mass).
+version: "0.2"
 assumptions:
   atmosphere: "air or synthetic air (typical for binder carbonation studies)"
   heating_rate_c_per_min: 10
   note: >-
-    Assignments overlap: C–S–H and clay dehydroxylation can span similar ranges to portlandite;
-    use DTG peak positions and complementary methods (XRD, FTIR). Literature often cites
-    portlandite decomposition near ~400–550 °C and calcite decarbonation from ~600 °C upward
-    (e.g. cementitious TGA reviews and calibrated TG schemes for Ca(OH)₂ / CaCO₃).
+    Band limits follow a common 120 / 250 / 550 / 850 °C partition for cumulative or step mass loss.
+    Assignments overlap: C–S–H, clay, and portlandite can straddle 250–550 °C; use DTG and
+    complementary XRD/FTIR. CaCO₃ decarbonation is typically strongest from ~600 °C upward;
+    the 550–850 °C band is intended to capture the main carbonate step.
 windows:
   - id: free_moisture
     label: "Physically adsorbed water / free moisture"
+    range_label: "<120"
     temp_min_c: 0
-    temp_max_c: 200
-    source: "Laboratory TGA reference tables (lime mortar); general TG — evaporation of pore and hygroscopic water below ~200 °C"
+    temp_max_c: 120
+    source: >-
+      Laboratory and heritage mortar mass-loss tables (e.g. evaporation of pore and hygroscopic
+      water below ~120–200 °C in many TG methods)
     notes: >-
       Pore-water and hygroscopic moisture loss; reflects porosity and moisture retention.
       Sample-to-sample differences in retained water are common.
 
   - id: bound_water_volatiles
-    label: "Bound water / minor hydrated or volatile phases"
-    temp_min_c: 200
-    temp_max_c: 400
-    source: "Laboratory TGA tables; overlaps with water from C–S–H / aluminosilicates and trace organics in some matrices"
+    label: "Bound water / C–S–H and interlayer or loosely bound water"
+    range_label: "120–250"
+    temp_min_c: 120
+    temp_max_c: 250
+    source: "Laboratory TGA tables; overlaps C–S–H / aluminosilicate water and some organics in some matrices"
     notes: >-
-      Chemically bound water from minor hydraulic products or clay-related phases; may be
-      weak if hydration is limited. Possible trace organic or impurity volatiles — not unique.
+      Dehydroxylation and bound-water release from gels and minor phases; strength depends on
+      degree of reaction and mix design. Not phase-specific in isolation.
 
   - id: portlandite_clay_dehydroxylation
-    label: "Portlandite (Ca(OH)₂) and clay dehydroxylation"
-    temp_min_c: 400
-    temp_max_c: 600
+    label: "Portlandite (Ca(OH)₂), clays, and high-temperature dehydration of silicates"
+    range_label: "250–550"
+    temp_min_c: 250
+    temp_max_c: 550
     source: >-
-      Laboratory TGA tables; literature — Ca(OH)₂ dehydroxylation commonly centered ~400–550 °C
-      (cement / lime paste TG; e.g. quantitative TG schemes for hydrated systems)
+      Laboratory TGA; literature — portlandite dehydroxylation and clay losses often most evident
+      within broad ~300–600 °C envelopes depending on material
     notes: >-
-      Residual lime and dehydroxylation of clay minerals; indicates incomplete carbonation or
-      presence of hydrated constituents. Overlaps with hydraulic reaction products in blended systems.
+      Residual lime and dehydroxylation of sheet silicates; overlaps hydraulic products in blended
+      or pozzolanic systems. Coarse 250–550 °C band: interpret with DTG.
 
   - id: calcite_decarbonation
-    label: "Calcite (CaCO₃) decarbonation"
-    temp_min_c: 600
+    label: "Calcite and carbonate decarbonation (and residual breakdown)"
+    range_label: "550–850"
+    temp_min_c: 550
     temp_max_c: 850
     source: >-
-      Laboratory TGA tables; literature — CaCO₃ decomposition typically strong from ~600–800+ °C
-      in air (exact DTG peak varies with heating rate, CO₂ partial pressure, crystal size)
+      Laboratory TGA; literature — CaCO₃ mass loss is typically prominent from ~600–800+ °C in air
     notes: >-
-      Major CO₂ loss from carbonate; confirms carbonated binder when consistent with other data.
-      Relative step size reflects degree of carbonation vs. other phases.
+      Main CO₂ release from carbonates; confirms carbonation when supported by other methods.
+      Relative step size vs. other bands indicates binder carbonation and dolomite-like phases if present.
