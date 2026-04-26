@@ -12,7 +12,19 @@ st.set_page_config(
 )
 inject_readability_css()
 
-st.title("Soil Analytics")
+# Logo and title side by side
+logo_col, title_col = st.columns([0.07, 0.93], gap="small")
+with logo_col:
+    st.write("")  # Add some vertical spacing
+    st.image("assets/logo.svg", width=60)
+with title_col:
+    st.markdown(
+        """
+        <h1 style="margin-top: 0.15rem; margin-bottom: 0; margin-left: -1rem;">Soil Analytics</h1>
+        """,
+        unsafe_allow_html=True,
+    )
+
 st.markdown(
     "Interpret **laboratory exports** of vibrational, diffraction, and thermal data against reference "
     "windows. Use a **structured FESEM guide** to connect texture to likely phase."
