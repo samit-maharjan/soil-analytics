@@ -6,7 +6,7 @@ from soil_analytics.streamlit_readability import inject_readability_css
 
 st.set_page_config(
     page_title="Soil Analytics",
-    page_icon="🌱",
+    page_icon="assets/logo.svg",
     layout="wide",
     initial_sidebar_state="expanded",
 )
