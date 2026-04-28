@@ -5,11 +5,11 @@ from __future__ import annotations
 import yaml
 import streamlit as st
 
-from soil_analytics.fesem_mcq import parse_phases
-from soil_analytics.fesem_wizard import find_option, load_wizard, WizardNode
-from soil_analytics.paths import reference_config_dir
-from soil_analytics.streamlit_readability import inject_readability_css
-from soil_analytics.streamlit_tables import scrollable_dataframe
+from lime_analytics.fesem_mcq import parse_phases
+from lime_analytics.fesem_wizard import find_option, load_wizard, WizardNode
+from lime_analytics.paths import reference_config_dir
+from lime_analytics.streamlit_readability import inject_readability_css
+from lime_analytics.streamlit_tables import scrollable_dataframe
 
 REF = reference_config_dir() / "fesem_remarks.yaml"
 WIZ = reference_config_dir() / "fesem_wizard.yaml"
@@ -69,7 +69,7 @@ if phase_id and phase_id in by_id:
     st.subheader("Suggested match")
     st.markdown(
         f"**{p.label}**  \n{p.chemical_formula or '—'}  \n\n**Typical appearance (reference)**  \n{p.morphology}  \n\n"
-        f"**Interpretation (reference)**  \n{p.soil_interpretation}"
+        f"**Interpretation (reference)**  \n{p.lime_interpretation}"
     )
     b1, b2, _ = st.columns([0.32, 0.32, 0.36])
     with b1:

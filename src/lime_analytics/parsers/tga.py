@@ -8,8 +8,8 @@ from typing import BinaryIO
 import numpy as np
 import pandas as pd
 
-from soil_analytics.parsers._io import normalize_column, read_csv_flexible
-from soil_analytics.schemas import TGACurve
+from lime_analytics.parsers._io import normalize_column, read_csv_flexible
+from lime_analytics.schemas import TGACurve
 
 
 def _read_tga_dataframe_netzsch(raw: bytes) -> pd.DataFrame:

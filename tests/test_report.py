@@ -1,7 +1,7 @@
 """Report HTML builder."""
 
-from soil_analytics.reference_checks import CheckResult
-from soil_analytics.report import build_html_report
+from lime_analytics.reference_checks import CheckResult
+from lime_analytics.report import build_html_report
 
 
 def test_build_html_report() -> None:

@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from soil_analytics.parsers import parse_ftir_csv, parse_tga_csv, parse_xrd_csv
-from soil_analytics.reference_checks import (
+from lime_analytics.parsers import parse_ftir_csv, parse_tga_csv, parse_xrd_csv
+from lime_analytics.reference_checks import (
     CheckResult,
     check_ftir,
     check_tga,

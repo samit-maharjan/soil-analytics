@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from soil_analytics.parsers import (
+from lime_analytics.parsers import (
     parse_ftir_csv,
     parse_tga_csv,
     parse_xrd_asc,

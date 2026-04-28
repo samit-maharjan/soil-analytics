@@ -5,13 +5,13 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import streamlit as st
 
-from soil_analytics.parsers import parse_xrd_bytes
-from soil_analytics.plots import figure_to_embed_html, plot_xrd_multi
-from soil_analytics.schemas import XRDPattern
-from soil_analytics.report import build_html_report
-from soil_analytics.xrd_phases import find_phase_hits, merge_xrd_phase_rows, xrd_manual_two_theta_rows
-from soil_analytics.streamlit_readability import inject_readability_css
-from soil_analytics.streamlit_tables import scrollable_dataframe
+from lime_analytics.parsers import parse_xrd_bytes
+from lime_analytics.plots import figure_to_embed_html, plot_xrd_multi
+from lime_analytics.schemas import XRDPattern
+from lime_analytics.report import build_html_report
+from lime_analytics.xrd_phases import find_phase_hits, merge_xrd_phase_rows, xrd_manual_two_theta_rows
+from lime_analytics.streamlit_readability import inject_readability_css
+from lime_analytics.streamlit_tables import scrollable_dataframe
 
 st.set_page_config(page_title="XRD", layout="wide")
 inject_readability_css()

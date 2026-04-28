@@ -1,6 +1,6 @@
-# Soil Analytics Platform
+# Lime Analytics Platform
 
-A small **Streamlit** app for **soil and cementitious / carbonated material** workflows: you upload
+A small **Streamlit** app for **lime, cementitious, and carbonated material** workflows: you upload
 spectroscopy, diffraction, or thermal **exports**, compare them to **reference ranges** from the
 literature, and (for **FESEM**) follow a **progressive habit questionnaire** in YAML to suggest a
 likely phase—not by image or ML models. Reference data lives under `config/reference_ranges/`.
@@ -14,7 +14,7 @@ likely phase—not by image or ML models. Reference data lives under `config/ref
 | **TGA** | Upload **CSV** TG data, reference windows, **HTML** report. |
 | **FESEM** | Reference table plus **fesem_wizard.yaml** step flow to suggest a **mineral/phase** and a short **interpretation**; optional text download; the app does **not** read micrograph files. |
 
-The Python package in `src/soil_analytics/` contains parsers, path helpers, and the logic the UI calls.
+The Python package in `src/lime_analytics/` contains parsers, path helpers, and the logic the UI calls.
 
 ## Requirements
 
@@ -61,6 +61,6 @@ From the **repository root** (the folder that contains `pyproject.toml` and `str
 ## Project layout (short)
 
 - `streamlit_app/` — Streamlit entry (`Home.py`) and `pages/` for each technique
-- `src/soil_analytics/` — importable package used by the app
+- `src/lime_analytics/` — importable package used by the app
 - `config/reference_ranges/` — YAML ranges, bands, peaks, FESEM table, FESEM wizard flow
 - `tests/` — `pytest` tests

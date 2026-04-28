@@ -1,4 +1,4 @@
-# Mid-IR band windows for qualitative screening (soil organic matter, lime mortar / carbonated binders, silicates).
+# Mid-IR band windows for qualitative screening (organic matter, lime mortar / carbonated binders, silicates).
 # Wavenumbers in cm^-1. Windows envelope laboratory peak tables and common literature positions.
 version: "0.1"
 bands:
@@ -20,7 +20,7 @@ bands:
     label: "Aliphatic C–H stretch"
     wavenumber_min: 2850
     wavenumber_max: 2960
-    source: "Margenot et al., IR spectroscopy soil applications; typical alkyl C–H region"
+    source: "Margenot et al., IR spectroscopy environmental applications; typical alkyl C–H region"
     notes: "Broad; overlaps moisture; minor organics ~2920 cm⁻¹ in some mortar samples."
 
   - id: carbonate_combination

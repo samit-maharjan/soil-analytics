@@ -8,8 +8,8 @@ from typing import BinaryIO
 import numpy as np
 import pandas as pd
 
-from soil_analytics.parsers._io import normalize_column, read_csv_flexible
-from soil_analytics.schemas import XRDPattern
+from lime_analytics.parsers._io import normalize_column, read_csv_flexible
+from lime_analytics.schemas import XRDPattern
 
 
 def _find_two_theta_column(columns: list[str]) -> str | None:

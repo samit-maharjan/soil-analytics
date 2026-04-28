@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from soil_analytics.streamlit_tables import _build_wrapped_table_html, _cell_display
+from lime_analytics.streamlit_tables import _build_wrapped_table_html, _cell_display
 
 
 def test_cell_display_none_and_nan() -> None:

@@ -9,9 +9,9 @@ from typing import Any, Literal
 import numpy as np
 import yaml
 
-from soil_analytics._signal import has_prominent_peak
-from soil_analytics.paths import project_root
-from soil_analytics.schemas import FTIRSeries, TGACurve, XRDPattern
+from lime_analytics._signal import has_prominent_peak
+from lime_analytics.paths import project_root
+from lime_analytics.schemas import FTIRSeries, TGACurve, XRDPattern
 
 CheckStatus = Literal["pass", "warn", "fail", "info"]
 

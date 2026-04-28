@@ -1,11 +1,11 @@
-"""Soil Analytics — main entry (production-style landing)."""
+"""Lime Analytics — main entry (production-style landing)."""
 
 import streamlit as st
 
-from soil_analytics.streamlit_readability import inject_readability_css
+from lime_analytics.streamlit_readability import inject_readability_css
 
 st.set_page_config(
-    page_title="Soil Analytics",
+    page_title="Lime Analytics",
     page_icon="assets/logo.svg",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -20,7 +20,7 @@ with logo_col:
 with title_col:
     st.markdown(
         """
-        <h1 style="margin-top: 0.15rem; margin-bottom: 0; margin-left: -1rem;">Soil Analytics</h1>
+        <h1 style="margin-top: 0.15rem; margin-bottom: 0; margin-left: -1rem;">Lime Analytics</h1>
         """,
         unsafe_allow_html=True,
     )

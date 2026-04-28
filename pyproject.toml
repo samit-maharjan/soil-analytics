@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "soil-analytics"
+name = "lime-analytics"
 version = "0.1.0"
-description = "Soil analytics: FTIR/XRD/TGA reference checks and FESEM morphology MCQs (Streamlit UI)"
+description = "Lime analytics: FTIR/XRD/TGA reference checks and FESEM morphology MCQs (Streamlit UI)"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

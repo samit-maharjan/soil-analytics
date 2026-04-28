@@ -9,8 +9,8 @@ from typing import BinaryIO, Literal, cast
 import numpy as np
 import pandas as pd
 
-from soil_analytics.parsers._io import normalize_column, read_csv_flexible
-from soil_analytics.schemas import FTIRSeries
+from lime_analytics.parsers._io import normalize_column, read_csv_flexible
+from lime_analytics.schemas import FTIRSeries
 
 _YLabel = Literal["absorbance", "transmittance", "reflectance", "unknown"]
 

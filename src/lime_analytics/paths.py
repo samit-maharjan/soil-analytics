@@ -9,11 +9,11 @@ def project_root() -> Path:
     """
     Repository root containing `config/reference_ranges/`.
 
-    Prefer the source tree next to `src/soil_analytics`; fall back to walking up from cwd
+    Prefer the source tree next to `src/lime_analytics`; fall back to walking up from cwd
     so `streamlit run` works when the cwd is the repo root.
     """
     here = Path(__file__).resolve()
-    # src/soil_analytics/paths.py -> src -> root
+    # src/lime_analytics/paths.py -> src -> root
     from_src = here.parents[2]
     if (from_src / "config" / "reference_ranges").is_dir():
         return from_src

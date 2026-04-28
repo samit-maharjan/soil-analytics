@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
 
-from soil_analytics.schemas import FTIRSeries, TGACurve, XRDPattern
-from soil_analytics.xrd_phases import PhaseHit
+from lime_analytics.schemas import FTIRSeries, TGACurve, XRDPattern
+from lime_analytics.xrd_phases import PhaseHit
 
 
 def plot_ftir_multi(

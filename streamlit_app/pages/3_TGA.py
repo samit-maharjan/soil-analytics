@@ -7,13 +7,13 @@ import pandas as pd
 import streamlit as st
 import yaml
 
-from soil_analytics.parsers import parse_tga_csv
-from soil_analytics.paths import reference_config_dir
-from soil_analytics.plots import figure_to_embed_html, plot_tga_multi_reference, tga_mass_at_temp
-from soil_analytics.reference_checks import tga_range_display_str, tga_window_manual_row
-from soil_analytics.report import build_html_report
-from soil_analytics.streamlit_readability import inject_readability_css
-from soil_analytics.streamlit_tables import scrollable_dataframe
+from lime_analytics.parsers import parse_tga_csv
+from lime_analytics.paths import reference_config_dir
+from lime_analytics.plots import figure_to_embed_html, plot_tga_multi_reference, tga_mass_at_temp
+from lime_analytics.reference_checks import tga_range_display_str, tga_window_manual_row
+from lime_analytics.report import build_html_report
+from lime_analytics.streamlit_readability import inject_readability_css
+from lime_analytics.streamlit_tables import scrollable_dataframe
 
 st.set_page_config(page_title="TGA", layout="wide")
 inject_readability_css()

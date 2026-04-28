@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from soil_analytics.paths import project_root, reference_config_dir
-from soil_analytics.reference_checks import ftir_manual_wavenumber_rows, tga_window_manual_row
-from soil_analytics.xrd_phases import xrd_manual_two_theta_rows
+from lime_analytics.paths import project_root, reference_config_dir
+from lime_analytics.reference_checks import ftir_manual_wavenumber_rows, tga_window_manual_row
+from lime_analytics.xrd_phases import xrd_manual_two_theta_rows
 
 
 def test_ftir_manual_hits_narrow_bands() -> None:

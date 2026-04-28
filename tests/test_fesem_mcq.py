@@ -1,6 +1,6 @@
 """FESEM phase table helpers."""
 
-from soil_analytics.fesem_mcq import parse_phases
+from lime_analytics.fesem_mcq import parse_phases
 
 
 def test_parse_phases_minimal() -> None:
@@ -11,10 +11,10 @@ def test_parse_phases_minimal() -> None:
             "chemical_formula": "X",
             "morphology": "fibrous",
             "notes": "n1",
-            "soil_interpretation": "soil line",
+            "lime_interpretation": "lime line",
         }
     ]
     ps = parse_phases(rows)
     assert len(ps) == 1
     assert ps[0].label == "Alpha"
-    assert ps[0].soil_interpretation == "soil line"
+    assert ps[0].lime_interpretation == "lime line"

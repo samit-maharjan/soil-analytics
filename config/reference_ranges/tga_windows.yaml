@@ -1,4 +1,4 @@
-# Temperature windows for comparative mass-loss steps — lime-based binders, carbonated systems, and related soils.
+# Temperature windows for comparative mass-loss steps — lime-based binders and carbonated systems.
 # Four-band scheme aligned with tabulated mass-loss by range (e.g. <120, 120–250, 250–550, 550–850 °C)
 # and reporting up to 850 °C; interpretation is method-sensitive (atmosphere, rate, crucible, sample mass).
 version: "0.2"

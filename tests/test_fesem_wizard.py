@@ -2,9 +2,9 @@
 
 import yaml
 
-from soil_analytics.fesem_mcq import parse_phases
-from soil_analytics.fesem_wizard import load_wizard
-from soil_analytics.paths import project_root, reference_config_dir
+from lime_analytics.fesem_mcq import parse_phases
+from lime_analytics.fesem_wizard import load_wizard
+from lime_analytics.paths import project_root, reference_config_dir
 
 
 def test_fesem_wizard_yaml_loads() -> None:

@@ -6,7 +6,7 @@ import html
 from datetime import UTC, datetime
 from typing import Any
 
-from soil_analytics.reference_checks import CheckResult
+from lime_analytics.reference_checks import CheckResult
 
 
 def checks_to_rows(results: list[CheckResult]) -> list[dict[str, Any]]:

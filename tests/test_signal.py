@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from soil_analytics._signal import has_prominent_peak
+from lime_analytics._signal import has_prominent_peak
 
 
 def test_has_prominent_peak_absorbance() -> None:

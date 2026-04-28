@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from soil_analytics.schemas import XRDPattern
+from lime_analytics.schemas import XRDPattern
 
 
 @dataclass(frozen=True)

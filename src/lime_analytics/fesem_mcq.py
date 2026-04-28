@@ -12,7 +12,7 @@ class PhaseSpec:
     chemical_formula: str | None
     morphology: str
     notes: str
-    soil_interpretation: str
+    lime_interpretation: str
 
 
 def parse_phases(yaml_block: list[dict]) -> list[PhaseSpec]:
@@ -27,8 +27,8 @@ def parse_phases(yaml_block: list[dict]) -> list[PhaseSpec]:
                 chemical_formula=r.get("chemical_formula"),
                 morphology=str(r.get("morphology") or ""),
                 notes=str(r.get("notes") or ""),
-                soil_interpretation=str(
-                    r.get("soil_interpretation")
+                lime_interpretation=str(
+                    r.get("lime_interpretation")
                     or r.get("notes")
                     or "—"
                 ),

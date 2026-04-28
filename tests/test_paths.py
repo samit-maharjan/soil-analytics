@@ -1,6 +1,6 @@
 """Path resolution."""
 
-from soil_analytics.paths import reference_config_dir
+from lime_analytics.paths import reference_config_dir
 
 
 def test_reference_config_exists() -> None:

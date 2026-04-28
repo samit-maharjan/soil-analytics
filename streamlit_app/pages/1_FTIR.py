@@ -6,14 +6,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
-from soil_analytics.parsers import parse_ftir_csv
-from soil_analytics.paths import reference_config_dir
-from soil_analytics.schemas import FTIRSeries
-from soil_analytics.plots import figure_to_embed_html, plot_ftir_multi
-from soil_analytics.reference_checks import check_ftir, ftir_manual_wavenumber_rows, ftir_merged_inference_rows
-from soil_analytics.report import build_html_report
-from soil_analytics.streamlit_readability import inject_readability_css
-from soil_analytics.streamlit_tables import scrollable_dataframe
+from lime_analytics.parsers import parse_ftir_csv
+from lime_analytics.paths import reference_config_dir
+from lime_analytics.schemas import FTIRSeries
+from lime_analytics.plots import figure_to_embed_html, plot_ftir_multi
+from lime_analytics.reference_checks import check_ftir, ftir_manual_wavenumber_rows, ftir_merged_inference_rows
+from lime_analytics.report import build_html_report
+from lime_analytics.streamlit_readability import inject_readability_css
+from lime_analytics.streamlit_tables import scrollable_dataframe
 
 st.set_page_config(page_title="FTIR", layout="wide")
 inject_readability_css()
